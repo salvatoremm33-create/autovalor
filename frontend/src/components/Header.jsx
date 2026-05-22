@@ -118,6 +118,7 @@ export default function Header() {
               <Link
                 key={path}
                 to={path}
+                className="nav-link-item"
                 style={{
                   ...styles.navLink,
                   ...(isActive(path) ? styles.navLinkActive : {})

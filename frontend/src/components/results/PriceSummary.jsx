@@ -143,7 +143,7 @@ export default function PriceSummary({ prices, vehicle }) {
       />
 
       {/* Three columns */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="price-cols">
         <PriceColumn
           title="Intercambio"
           subtitle="Lo que ofrece un concesionario si entregaste tu auto como pago inicial"

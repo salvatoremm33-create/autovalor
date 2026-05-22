@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
+  baseURL: process.env.REACT_APP_API_URL || 'https://autovalor-production-1960.up.railway.app/api',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' }
 });

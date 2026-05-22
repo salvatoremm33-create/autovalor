@@ -44,7 +44,7 @@ const MILEAGE_PRESETS = [
 
 function StepBar({ currentStep }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 40, overflowX: 'auto', padding: '0 8px' }}>
+    <div className="step-bar">
       {STEPS.map((step, i) => {
         const isCompleted = i < currentStep;
         const isActive = i === currentStep;

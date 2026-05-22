@@ -170,7 +170,7 @@ export default function Results() {
         {/* Tabs */}
         <div style={{ background: 'var(--white)', borderBottom: '1px solid var(--gray-200)', position: 'sticky', top: 64, zIndex: 50 }}>
           <div className="container">
-            <div style={{ display: 'flex', gap: 0, overflowX: 'auto' }}>
+            <div className="results-tabs">
               {tabs.map(tab => (
                 <button
                   key={tab.id}

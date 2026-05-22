@@ -91,3 +91,83 @@ img { max-width: 100%; display: block; }
 
 /* Focus ring */
 :focus-visible { outline: 2px solid var(--red-primary); outline-offset: 2px; border-radius: 2px; }
+
+/* ============================================================
+   LAYOUT HELPERS — used by components; media queries override
+   ============================================================ */
+
+/* Three price columns in PriceSummary */
+.price-cols {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Two-column grid in FinancingCalculator */
+.financing-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* Scrollable step bar */
+.step-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 8px 8px;
+  margin-bottom: 40px;
+}
+.step-bar::-webkit-scrollbar { display: none; }
+
+/* Scrollable tabs row */
+.results-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.results-tabs::-webkit-scrollbar { display: none; }
+
+/* Nav link items hidden on mobile */
+.nav-link-item { display: flex; }
+
+/* ============================================================
+   MOBILE  ≤ 639 px  (iPhone SE → iPhone 15 Pro)
+   ============================================================ */
+@media (max-width: 639px) {
+  html { font-size: 14px; }
+  body { overflow-x: hidden; }
+
+  /* Inputs: 16px prevents iOS auto-zoom */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* Better tap targets */
+  button { min-height: 44px; }
+
+  /* Hide secondary nav links; keep only the CTA */
+  .nav-link-item { display: none; }
+
+  /* Price columns stack vertically */
+  .price-cols { flex-direction: column; }
+  /* Undo the highlight-column scale so it doesn't overflow */
+  .price-cols > * { transform: none !important; }
+
+  /* Financing: single column */
+  .financing-cols { grid-template-columns: 1fr; }
+
+  /* Step bar: left-align so it scrolls from the start */
+  .step-bar { justify-content: flex-start; }
+}
+
+/* ============================================================
+   TABLET  ≤ 768 px
+   ============================================================ */
+@media (max-width: 768px) {
+  .financing-cols { grid-template-columns: 1fr; }
+}
