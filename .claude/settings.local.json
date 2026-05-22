@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\Biscuit2024\\\\Desktop\\\\autovalua-mx\" -File | Select-Object FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Biscuit2024\\\\Desktop\\\\autovalua-mx\\\\\", \"\"\\) } | Sort-Object)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:5000/api/health\" | ConvertTo-Json)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:5000/api/makes\" | ConvertTo-Json -Depth 2 | Select-Object -First 20)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Biscuit2024\\\\Desktop\\\\autovalua-mx\\\\frontend\"; $env:HOST=\"localhost\"; $env:DANGEROUSLY_DISABLE_HOST_CHECK=\"true\"; Start-Process npm -ArgumentList \"start\" -WindowStyle Normal)",
+      "PowerShell(Start-Sleep -Seconds 20; $r = Invoke-WebRequest -Uri \"http://localhost:3000\" -UseBasicParsing -TimeoutSec 10 -ErrorAction SilentlyContinue; if \\($r\\) { Write-Host \"Frontend UP — HTTP $\\($r.StatusCode\\)\" -ForegroundColor Green; Start-Process \"http://localhost:3000\" } else { Write-Host \"Not ready yet\" -ForegroundColor Yellow })",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Biscuit2024\\\\Desktop\\\\autovalua-mx\\\\frontend\"; $env:HOST=\"localhost\"; $env:DANGEROUSLY_DISABLE_HOST_CHECK=\"true\"; $env:CI=\"false\"; & \"C:\\\\Program Files\\\\nodejs\\\\node.exe\" \"C:\\\\Program Files\\\\nodejs\\\\node_modules\\\\npm\\\\bin\\\\npm-cli.js\" start 2>&1 | Select-Object -First 60)",
+      "PowerShell($r = Invoke-WebRequest -Uri \"http://localhost:3000\" -UseBasicParsing -TimeoutSec 5 -ErrorAction SilentlyContinue; if \\($r\\) { Write-Host \"HTTP $\\($r.StatusCode\\) — opening browser\" -ForegroundColor Green } else { Write-Host \"Not responding\" -ForegroundColor Red }; Start-Process \"http://localhost:3000\")",
+      "PowerShell(gh *)",
+      "PowerShell(winget install *)",
+      "PowerShell(git *)",
+      "PowerShell(gh auth *)"
+    ]
+  }
+}
