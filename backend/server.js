@@ -66,6 +66,9 @@ app.get('/api/health', (req, res) => {
 
 app.use(require('./middleware/errorHandler'));
 
+// Auto-migrate and seed on startup
+const { initDatabase } = require('./db/init');
+
 // Scheduled scraping every 6 hours
 const intervalHours = parseInt(process.env.SCRAPE_INTERVAL_HOURS || '6');
 cron.schedule(`0 */${intervalHours} * * *`, async () => {
@@ -79,8 +82,18 @@ cron.schedule(`0 */${intervalHours} * * *`, async () => {
   }
 });
 
-app.listen(PORT, () => {
-  logger.info(`AutoValor backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
-});
+async function startServer() {
+  try {
+    await initDatabase();
+  } catch (err) {
+    logger.error('Database init failed — starting anyway:', err.message);
+  }
+
+  app.listen(PORT, () => {
+    logger.info(`AutoValor backend running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  });
+}
+
+startServer();
 
 module.exports = app;

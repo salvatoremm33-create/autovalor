@@ -255,8 +255,20 @@ async function seed() {
     throw err;
   } finally {
     client.release();
-    process.exit(0);
   }
 }
 
-seed();
+// Alias so init.js can import it
+async function seedDatabase() {
+  return seed();
+}
+
+// Only call process.exit when run directly (npm run seed)
+if (require.main === module) {
+  seed().then(() => process.exit(0)).catch(err => {
+    console.error(err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { seedDatabase };
