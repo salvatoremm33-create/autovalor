@@ -114,7 +114,8 @@ router.get('/preview', requireToken, async (req, res) => {
       scripts,
       interestingClasses: [...interestingClasses].slice(0, 40),
       carLinks: [...new Set(links)].slice(0, 20),
-      bodyPreview: $('body').text().replace(/\s+/g, ' ').slice(0, 600)
+      bodyPreview: ($('body').text() || '').replace(/\s+/g, ' ').slice(0, 600),
+      rawHtml: (resp.data || '').slice(0, 3000)
     });
   } catch (err) {
     res.json({ error: err.message, code: err.response?.status });
