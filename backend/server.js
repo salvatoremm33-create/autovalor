@@ -54,6 +54,7 @@ app.use('/api/trims', require('./routes/trims'));
 app.use('/api/prices', require('./routes/prices'));
 app.use('/api/listings', scrapeLimiter, require('./routes/listings'));
 app.use('/api/financing', require('./routes/financing'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.get('/api/health', (req, res) => {
   res.json({

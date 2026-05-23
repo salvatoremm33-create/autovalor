@@ -92,6 +92,27 @@ router.get('/estimate', priceValidation, async (req, res, next) => {
       [make, model, yearInt, trim || null, mileageKm, condition]
     ).catch(() => {});
 
+    // Fetch Autocosmos reference prices for this vehicle
+    const guideResult = await db.query(
+      `SELECT trim_name, buy_price_mxn, sell_price_mxn, source
+       FROM price_guides
+       WHERE make_name ILIKE $1 AND model_name ILIKE $2 AND year = $3
+       ORDER BY source, trim_name NULLS LAST
+       LIMIT 20`,
+      [make, model, yearInt]
+    );
+
+    let priceGuide = null;
+    if (guideResult.rows.length > 0) {
+      const buyPrices  = guideResult.rows.map(r => r.buy_price_mxn).filter(Boolean);
+      const sellPrices = guideResult.rows.map(r => r.sell_price_mxn).filter(Boolean);
+      priceGuide = {
+        entries: guideResult.rows,
+        avgBuyPrice:  buyPrices.length  ? Math.round(buyPrices.reduce((a, b) => a + b, 0)  / buyPrices.length)  : null,
+        avgSellPrice: sellPrices.length ? Math.round(sellPrices.reduce((a, b) => a + b, 0) / sellPrices.length) : null
+      };
+    }
+
     // Generate AI analysis
     const analysis = await generateAIAnalysis({
       makeName: make, modelName: model, year: yearInt,
@@ -108,6 +129,7 @@ router.get('/estimate', priceValidation, async (req, res, next) => {
         transmission: trimData?.transmission || null
       },
       prices,
+      priceGuide,
       priceHistory,
       analysis,
       sampleSize: listings.rows.length

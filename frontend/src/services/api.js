@@ -44,6 +44,12 @@ export const calculateFinancing = (data) =>
 export const getFinancingRates = () =>
   api.get('/financing/rates');
 
+export const triggerScrape = (token = 'autovalor-admin') =>
+  api.post('/admin/scrape', {}, { headers: { 'x-admin-token': token } });
+
+export const getScrapeStatus = (token = 'autovalor-admin') =>
+  api.get('/admin/scrape/status', { headers: { 'x-admin-token': token } });
+
 export const formatMXN = (amount) => {
   if (!amount && amount !== 0) return '—';
   return new Intl.NumberFormat('es-MX', {

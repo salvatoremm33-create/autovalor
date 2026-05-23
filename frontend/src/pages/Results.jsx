@@ -235,7 +235,7 @@ export default function Results() {
 
           {/* Tab content */}
           {activeTab === 'price' && priceData && (
-            <PriceSummary prices={priceData.prices} vehicle={priceData.vehicle} />
+            <PriceSummary prices={priceData.prices} vehicle={priceData.vehicle} priceGuide={priceData.priceGuide} />
           )}
 
           {activeTab === 'listings' && (

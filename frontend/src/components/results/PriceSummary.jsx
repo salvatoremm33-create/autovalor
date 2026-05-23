@@ -87,7 +87,80 @@ function PriceGauge({ fairMarket, tradeInMid, dealerMid, privateMid }) {
   );
 }
 
-export default function PriceSummary({ prices, vehicle }) {
+function PriceGuidePanel({ priceGuide }) {
+  if (!priceGuide) return null;
+  const { entries, avgBuyPrice, avgSellPrice } = priceGuide;
+
+  return (
+    <div style={{
+      background: 'var(--white)', borderRadius: 14, padding: '24px',
+      border: '1px solid var(--gray-200)', boxShadow: 'var(--shadow-sm)', marginBottom: 24
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gray-900)', marginBottom: 2 }}>
+            Precios de Referencia — Autocosmos
+          </h3>
+          <p style={{ fontSize: 12, color: 'var(--gray-400)' }}>
+            Guía de precios publicados por versión
+          </p>
+        </div>
+        {(avgBuyPrice || avgSellPrice) && (
+          <div style={{ display: 'flex', gap: 24 }}>
+            {avgBuyPrice && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>Compra promedio</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a' }}>{formatMXN(avgBuyPrice)}</div>
+              </div>
+            )}
+            {avgSellPrice && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>Venta promedio</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--blue)' }}>{formatMXN(avgSellPrice)}</div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {entries.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
+                <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--gray-500)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Versión</th>
+                <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--gray-500)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Precio Compra</th>
+                <th style={{ textAlign: 'right', padding: '8px 12px', color: 'var(--gray-500)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase' }}>Precio Venta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.slice(0, 8).map((row, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid var(--gray-100)', background: i % 2 === 0 ? 'transparent' : 'var(--gray-50)' }}>
+                  <td style={{ padding: '10px 12px', color: 'var(--gray-700)', fontWeight: 500 }}>
+                    {row.trim_name || 'Versión base'}
+                  </td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', color: '#16a34a', fontWeight: 700 }}>
+                    {row.buy_price_mxn ? formatMXN(row.buy_price_mxn) : '—'}
+                  </td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--blue)', fontWeight: 700 }}>
+                    {row.sell_price_mxn ? formatMXN(row.sell_price_mxn) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {entries.length > 8 && (
+            <p style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 8, textAlign: 'right' }}>
+              +{entries.length - 8} versiones más
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function PriceSummary({ prices, vehicle, priceGuide }) {
   if (!prices) return null;
 
   const { fairMarketValue, privateSale, dealerRetail, tradeIn, adjustments } = prices;
@@ -141,6 +214,9 @@ export default function PriceSummary({ prices, vehicle }) {
         dealerMid={dealerRetail.mid}
         privateMid={privateSale.mid}
       />
+
+      {/* Autocosmos reference prices */}
+      <PriceGuidePanel priceGuide={priceGuide} />
 
       {/* Three columns */}
       <div className="price-cols">
