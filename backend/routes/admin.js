@@ -98,12 +98,22 @@ router.get('/preview', requireToken, async (req, res) => {
       }
     });
 
+    // Collect car-related links
+    const links = [];
+    $('a[href]').each((_, el) => {
+      const href = $(el).attr('href') || '';
+      if (/nissan|toyota|honda|volkswagen|chevrolet|mazda|ford|kia|auto|car|precio|listing|versa|jetta|civic/i.test(href)) {
+        links.push(href.slice(0, 120));
+      }
+    });
+
     res.json({
       status: resp.status,
       htmlLength: resp.data.length,
       title: $('title').text(),
       scripts,
       interestingClasses: [...interestingClasses].slice(0, 40),
+      carLinks: [...new Set(links)].slice(0, 20),
       bodyPreview: $('body').text().replace(/\s+/g, ' ').slice(0, 600)
     });
   } catch (err) {
