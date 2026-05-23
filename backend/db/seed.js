@@ -623,6 +623,13 @@ async function seed() {
       ];
       const trims = trimsByModel[modelName] || defaultTrims;
 
+      // Delete trims not in the current list so stale entries from old seeds are removed
+      const currentNames = trims.map(t => t.name);
+      await client.query(
+        `DELETE FROM trims WHERE year_id = $1 AND name != ALL($2::text[])`,
+        [yearId, currentNames]
+      );
+
       for (let i = 0; i < trims.length; i++) {
         const trim = trims[i];
         const msrp = getMSRP(makeName, modelName, year, trim.name, i);
