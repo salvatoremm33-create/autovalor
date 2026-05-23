@@ -69,18 +69,29 @@ app.use(require('./middleware/errorHandler'));
 // Auto-migrate and seed on startup
 const { initDatabase } = require('./db/init');
 
-// Scheduled scraping every 6 hours
+// MercadoLibre — every 6 hours
 const intervalHours = parseInt(process.env.SCRAPE_INTERVAL_HOURS || '6');
 cron.schedule(`0 */${intervalHours} * * *`, async () => {
   logger.info('Running scheduled MercadoLibre scrape...');
   try {
     const scraper = require('./scrapers/mercadolibre');
     await scraper.scrapePopularModels();
-    logger.info('Scheduled scrape completed successfully');
+    logger.info('Scheduled MercadoLibre scrape completed');
   } catch (err) {
-    logger.error('Scheduled scrape failed:', err.message);
+    logger.error('Scheduled MercadoLibre scrape failed:', err.message);
   }
 });
+
+// Nightly scrapers — Autocosmos, Seminuevos, Kavak at 03:00 MX time
+cron.schedule('0 3 * * *', async () => {
+  logger.info('Running nightly scrapers (Autocosmos, Seminuevos, Kavak)...');
+  try {
+    const { runNightlyScrapers } = require('./scrapers/scheduler');
+    await runNightlyScrapers();
+  } catch (err) {
+    logger.error('Nightly scrapers failed:', err.message);
+  }
+}, { timezone: 'America/Mexico_City' });
 
 async function startServer() {
   try {

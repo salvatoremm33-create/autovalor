@@ -4,11 +4,10 @@ const db   = require('./connection');
 const logger = require('../utils/logger');
 
 async function runMigrations() {
-  const sql = fs.readFileSync(
-    path.join(__dirname, 'migrations', '001_initial.sql'),
-    'utf8'
-  );
-  await db.query(sql);
+  for (const file of ['001_initial.sql', '002_price_guides.sql']) {
+    const sql = fs.readFileSync(path.join(__dirname, 'migrations', file), 'utf8');
+    await db.query(sql);
+  }
   logger.info('DB migrations applied');
 }
 
