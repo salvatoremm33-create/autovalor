@@ -30,18 +30,25 @@ router.post('/scrape', requireToken, (req, res) => {
     });
   }
 
-  scrapeState = { running: true, startedAt: new Date().toISOString(), completedAt: null, result: null, error: null };
+  const startedAt = new Date().toISOString();
+  scrapeState = { running: true, startedAt, completedAt: null, result: null, error: null };
   logger.info('Admin: manual scrape triggered');
 
   // Fire-and-forget — response returns immediately
   (async () => {
     try {
+      // Seed reference prices first (fast, always works)
+      const { seedPriceGuides } = require('../db/seed_price_guides');
+      const seeded = await seedPriceGuides();
+      logger.info(`Price guide seed: ${seeded} entries`);
+
       const { runNightlyScrapers } = require('../scrapers/scheduler');
       const result = await runNightlyScrapers();
-      scrapeState = { running: false, startedAt: scrapeState.startedAt, completedAt: new Date().toISOString(), result, error: null };
+      result.priceGuideSeed = seeded;
+      scrapeState = { running: false, startedAt, completedAt: new Date().toISOString(), result, error: null };
       logger.info('Admin scrape completed:', result);
     } catch (err) {
-      scrapeState = { running: false, startedAt: scrapeState.startedAt, completedAt: new Date().toISOString(), result: null, error: err.message };
+      scrapeState = { running: false, startedAt, completedAt: new Date().toISOString(), result: null, error: err.message };
       logger.error('Admin scrape failed:', err.message);
     }
   })();

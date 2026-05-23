@@ -87,9 +87,20 @@ function PriceGauge({ fairMarket, tradeInMid, dealerMid, privateMid }) {
   );
 }
 
+const SOURCE_LABELS = {
+  autocosmos:   'Autocosmos',
+  autometrica:  'Guía Autométrica',
+  kavak:        'Kavak',
+  seminuevos:   'Seminuevos'
+};
+
 function PriceGuidePanel({ priceGuide }) {
   if (!priceGuide) return null;
   const { entries, avgBuyPrice, avgSellPrice } = priceGuide;
+
+  // Determine primary source label
+  const sources = [...new Set(entries.map(e => e.source).filter(Boolean))];
+  const sourceLabel = sources.map(s => SOURCE_LABELS[s] || s).join(' / ') || 'Referencia';
 
   return (
     <div style={{
@@ -99,7 +110,7 @@ function PriceGuidePanel({ priceGuide }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gray-900)', marginBottom: 2 }}>
-            Precios de Referencia — Autocosmos
+            Precios de Referencia — {sourceLabel}
           </h3>
           <p style={{ fontSize: 12, color: 'var(--gray-400)' }}>
             Guía de precios publicados por versión

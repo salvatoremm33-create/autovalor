@@ -97,7 +97,9 @@ router.get('/estimate', priceValidation, async (req, res, next) => {
       `SELECT trim_name, buy_price_mxn, sell_price_mxn, source
        FROM price_guides
        WHERE make_name ILIKE $1 AND model_name ILIKE $2 AND year = $3
-       ORDER BY source, trim_name NULLS LAST
+       ORDER BY
+         CASE source WHEN 'autocosmos' THEN 1 WHEN 'autometrica' THEN 2 ELSE 3 END,
+         trim_name NULLS LAST
        LIMIT 20`,
       [make, model, yearInt]
     );
