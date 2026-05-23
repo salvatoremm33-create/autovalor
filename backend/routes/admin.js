@@ -58,4 +58,17 @@ router.get('/scrape/status', requireToken, (req, res) => {
   res.json(scrapeState);
 });
 
+// GET /api/admin/diag — module health check
+router.get('/diag', requireToken, (req, res) => {
+  const mods = {};
+  for (const name of ['cheerio', 'axios', 'pg']) {
+    try { require(name); mods[name] = 'ok'; } catch (e) { mods[name] = e.message; }
+  }
+  for (const name of ['./autocosmos', './seminuevos', './kavak', './scheduler'].map(p => require('path').join(__dirname, '..', 'scrapers', p.slice(2)))) {
+    const key = require('path').basename(name, '.js');
+    try { require(name); mods[key] = 'ok'; } catch (e) { mods[key] = e.message; }
+  }
+  res.json({ node: process.version, env: process.env.NODE_ENV, modules: mods });
+});
+
 module.exports = router;

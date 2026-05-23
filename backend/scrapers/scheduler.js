@@ -10,7 +10,7 @@ async function runNightlyScrapers() {
   const startedAt = Date.now();
   logger.info('=== Nightly scraper run started ===');
 
-  const results = {};
+  const results = { autocosmos: 0, seminuevos: 0, kavak: 0, errors: {}, elapsedMs: 0 };
 
   // 1. Autocosmos price guides
   try {
@@ -19,6 +19,7 @@ async function runNightlyScrapers() {
     logger.info(`Autocosmos done: ${results.autocosmos} price entries`);
   } catch (err) {
     logger.error(`Autocosmos scraper error: ${err.message}`);
+    results.errors.autocosmos = err.message;
     results.autocosmos = 0;
   }
 
@@ -29,6 +30,7 @@ async function runNightlyScrapers() {
     logger.info(`Seminuevos done: ${results.seminuevos} listings`);
   } catch (err) {
     logger.error(`Seminuevos scraper error: ${err.message}`);
+    results.errors.seminuevos = err.message;
     results.seminuevos = 0;
   }
 
@@ -39,11 +41,12 @@ async function runNightlyScrapers() {
     logger.info(`Kavak done: ${results.kavak} listings`);
   } catch (err) {
     logger.error(`Kavak scraper error: ${err.message}`);
+    results.errors.kavak = err.message;
     results.kavak = 0;
   }
 
-  const elapsed = Math.round((Date.now() - startedAt) / 1000);
-  logger.info(`=== Nightly scraper run complete in ${elapsed}s — autocosmos:${results.autocosmos} seminuevos:${results.seminuevos} kavak:${results.kavak} ===`);
+  results.elapsedMs = Date.now() - startedAt;
+  logger.info(`=== Nightly scraper run complete in ${results.elapsedMs}ms — autocosmos:${results.autocosmos} seminuevos:${results.seminuevos} kavak:${results.kavak} ===`);
   return results;
 }
 
