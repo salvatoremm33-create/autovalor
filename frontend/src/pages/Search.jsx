@@ -147,8 +147,8 @@ export default function Search() {
 
   useEffect(() => {
     setLoading(true);
-    getMakes(true)
-      .then(data => setMakes(data))
+    getMakes()
+      .then(data => setMakes([...data].sort((a, b) => a.name.localeCompare(b.name, 'es'))))
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
