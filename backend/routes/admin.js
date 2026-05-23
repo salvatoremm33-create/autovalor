@@ -129,6 +129,19 @@ router.get('/preview', requireToken, async (req, res) => {
   }
 });
 
+// POST /api/admin/seed — force-run the vehicle catalog seed (makes/models/years/trims)
+router.post('/seed', requireToken, async (req, res) => {
+  try {
+    logger.info('Admin: manual seed triggered');
+    const { seedDatabase } = require('../db/seed');
+    const result = await seedDatabase();
+    res.json({ status: 'ok', ...result });
+  } catch (err) {
+    logger.error('Admin seed failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/diag — module health check
 router.get('/diag', requireToken, (req, res) => {
   const mods = {};
