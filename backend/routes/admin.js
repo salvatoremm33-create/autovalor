@@ -58,6 +58,59 @@ router.get('/scrape/status', requireToken, (req, res) => {
   res.json(scrapeState);
 });
 
+// GET /api/admin/preview?url=... — fetch a URL and return structure info
+router.get('/preview', requireToken, async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: 'url param required' });
+  try {
+    const axios = require('axios');
+    const cheerio = require('cheerio');
+    const resp = await axios.get(url, {
+      timeout: 15000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'es-MX,es;q=0.9'
+      }
+    });
+    const $ = cheerio.load(resp.data);
+
+    // Collect all script tags with type or containing JSON-like data
+    const scripts = [];
+    $('script').each((_, el) => {
+      const type = $(el).attr('type') || '';
+      const id   = $(el).attr('id') || '';
+      const src  = $(el).attr('src') || '';
+      const text = ($(el).html() || '').slice(0, 400);
+      if (type === 'application/ld+json' || id === '__NEXT_DATA__' || text.includes('precio') || text.includes('price')) {
+        scripts.push({ type, id, src: src.slice(0, 80), preview: text });
+      }
+    });
+
+    // Collect classes that look price/listing related
+    const interestingClasses = new Set();
+    $('[class]').each((_, el) => {
+      const cls = ($(el).attr('class') || '').split(/\s+/);
+      for (const c of cls) {
+        if (/price|precio|listing|card|vehicle|car|version|result/i.test(c)) {
+          interestingClasses.add(c);
+        }
+      }
+    });
+
+    res.json({
+      status: resp.status,
+      htmlLength: resp.data.length,
+      title: $('title').text(),
+      scripts,
+      interestingClasses: [...interestingClasses].slice(0, 40),
+      bodyPreview: $('body').text().replace(/\s+/g, ' ').slice(0, 600)
+    });
+  } catch (err) {
+    res.json({ error: err.message, code: err.response?.status });
+  }
+});
+
 // GET /api/admin/diag — module health check
 router.get('/diag', requireToken, (req, res) => {
   const mods = {};
