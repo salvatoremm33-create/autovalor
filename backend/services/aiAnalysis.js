@@ -100,10 +100,26 @@ function generateMarketInsights(params) {
     wait:     { label: 'Esperar', color: '#dc2626', description: 'El mercado o el vehículo presentan señales de alerta.' }
   };
 
+  // Market trend derived from price history
+  let marketTrend = { direction: 'stable', label: 'Estable', pctChange: 0, color: '#6B7280', arrow: '→' };
+  if (priceHistory && priceHistory.length >= 2) {
+    const recent = priceHistory[priceHistory.length - 1].avg_price;
+    const older = priceHistory[0].avg_price;
+    const change = ((recent - older) / older) * 100;
+    if (change > 5) {
+      marketTrend = { direction: 'rising', label: 'Al Alza', pctChange: change, color: '#dc2626', arrow: '▲' };
+    } else if (change < -5) {
+      marketTrend = { direction: 'falling', label: 'A la Baja', pctChange: change, color: '#16a34a', arrow: '▼' };
+    } else {
+      marketTrend = { direction: 'stable', label: 'Estable', pctChange: change, color: '#6B7280', arrow: '→' };
+    }
+  }
+
   return {
     score: clampedScore,
     recommendation: recommendationMap[recommendation],
     insights,
+    marketTrend,
     summary: `${makeName} ${modelName} ${year} — ${condition === 'excellent' ? 'En excelentes condiciones' : condition === 'good' ? 'En buenas condiciones' : 'Revisar condición'}. El valor de mercado refleja ${vehicleAge > 5 ? 'depreciación significativa' : 'buena retención de valor'} con ${listings ? listings.length : 0} anuncios activos.`
   };
 }

@@ -295,8 +295,8 @@ export default function Search() {
           )}
 
           {/* Main card */}
-          <div style={{
-            background: 'var(--white)', borderRadius: 16, padding: '32px',
+          <div className="search-main-card" style={{
+            background: 'var(--white)', borderRadius: 16,
             boxShadow: 'var(--shadow-md)', border: '1px solid var(--gray-200)'
           }}>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--gray-900)', marginBottom: 24 }}>
@@ -417,7 +417,7 @@ export default function Search() {
                       <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)', display: 'block', marginBottom: 8 }}>
                         Kilometraje exacto (km)
                       </label>
-                      <div style={{ display: 'flex', gap: 10 }}>
+                      <div className="mileage-row">
                         <input
                           type="text"
                           placeholder="Ej. 45,000"
@@ -435,9 +435,10 @@ export default function Search() {
                         />
                         <button
                           onClick={handleMileageSubmit}
+                          className="mileage-submit-btn"
                           style={{
                             background: 'var(--red-primary)', color: 'var(--white)',
-                            fontSize: 15, fontWeight: 700, padding: '0 24px',
+                            fontSize: 15, fontWeight: 700,
                             borderRadius: 8, cursor: 'pointer', border: 'none',
                             transition: 'background 0.2s', whiteSpace: 'nowrap'
                           }}

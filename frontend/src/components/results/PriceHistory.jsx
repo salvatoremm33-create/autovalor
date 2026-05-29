@@ -45,6 +45,11 @@ export default function PriceHistory({ history, make, model, year }) {
   const priceChange = lastPrice - firstPrice;
   const pctChange = firstPrice ? ((priceChange / firstPrice) * 100).toFixed(1) : 0;
 
+  const trendDirection = parseFloat(pctChange) > 5 ? 'rising' : parseFloat(pctChange) < -5 ? 'falling' : 'stable';
+  const trendLabel = trendDirection === 'rising' ? 'Al Alza' : trendDirection === 'falling' ? 'A la Baja' : 'Estable';
+  const trendArrow = trendDirection === 'rising' ? '▲' : trendDirection === 'falling' ? '▼' : '→';
+  const trendColor = trendDirection === 'rising' ? 'var(--red-primary)' : trendDirection === 'falling' ? 'var(--green)' : 'var(--gray-500)';
+
   return (
     <div style={{ background: 'var(--white)', borderRadius: 16, padding: '28px 24px', border: '1px solid var(--gray-200)', boxShadow: 'var(--shadow-sm)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
@@ -55,9 +60,12 @@ export default function PriceHistory({ history, make, model, year }) {
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 11, color: 'var(--gray-400)', marginBottom: 2 }}>Variación</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: priceChange >= 0 ? 'var(--red-primary)' : 'var(--green)' }}>
-            {priceChange >= 0 ? '▲' : '▼'} {Math.abs(pctChange)}%
+          <div style={{ fontSize: 11, color: 'var(--gray-400)', marginBottom: 2 }}>Tendencia del Mercado</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: trendColor }}>
+            {trendArrow} {trendLabel}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--gray-500)', marginTop: 2 }}>
+            {parseFloat(pctChange) >= 0 ? '+' : ''}{pctChange}% en el periodo
           </div>
         </div>
       </div>

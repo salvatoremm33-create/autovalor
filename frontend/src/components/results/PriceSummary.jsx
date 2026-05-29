@@ -63,7 +63,7 @@ function PriceGauge({ fairMarket, tradeInMid, dealerMid, privateMid }) {
           background: 'linear-gradient(to right, #6B7280, #d97706, #dc2626, #2563eb)'
         }} />
 
-        {markers.map(({ label, val, color }, i) => (
+        {markers.map(({ label, val, color }) => (
           <div key={label} style={{
             position: 'absolute', left: `${getPos(val)}%`,
             transform: 'translateX(-50%)',
@@ -98,7 +98,6 @@ function PriceGuidePanel({ priceGuide }) {
   if (!priceGuide) return null;
   const { entries, avgBuyPrice, avgSellPrice } = priceGuide;
 
-  // Determine primary source label
   const sources = [...new Set(entries.map(e => e.source).filter(Boolean))];
   const sourceLabel = sources.map(s => SOURCE_LABELS[s] || s).join(' / ') || 'Referencia';
 
@@ -171,7 +170,121 @@ function PriceGuidePanel({ priceGuide }) {
   );
 }
 
-export default function PriceSummary({ prices, vehicle, priceGuide }) {
+function MarketTrendBadge({ marketTrend }) {
+  if (!marketTrend) return null;
+  const { arrow, label, pctChange, color } = marketTrend;
+  const sign = pctChange > 0 ? '+' : '';
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
+      background: color + '22', border: `1px solid ${color}55`,
+      borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 700, color
+    }}>
+      <span>{arrow}</span>
+      <span>Mercado {label}</span>
+      {Math.abs(pctChange) >= 0.1 && (
+        <span style={{ opacity: 0.85 }}>({sign}{parseFloat(pctChange).toFixed(1)}%)</span>
+      )}
+    </div>
+  );
+}
+
+function BuyerAdvicePanel({ vehicle }) {
+  const { year, mileageKm, condition } = vehicle;
+  const currentYear = new Date().getFullYear();
+  const ageYears = Math.max(1, currentYear - year);
+  const avgKmPerYear = Math.round(mileageKm / ageYears);
+  const expectedKm = ageYears * 14000;
+  const kmDiff = mileageKm - expectedKm;
+
+  const advices = [];
+
+  // Mileage advice
+  if (avgKmPerYear < 10000) {
+    advices.push({
+      icon: '✓', type: 'positive', title: 'Kilometraje bajo',
+      text: `${avgKmPerYear.toLocaleString()} km/año — muy por debajo del promedio nacional (14,000 km/año). Indica uso moderado y menor desgaste mecánico. Puede justificar un precio más alto.`
+    });
+  } else if (avgKmPerYear > 20000) {
+    advices.push({
+      icon: '!', type: 'warning', title: 'Kilometraje alto',
+      text: `${avgKmPerYear.toLocaleString()} km/año — por encima del promedio. Solicita revisión de motor, transmisión y frenos antes de comprar. Negocia descuento adicional.`
+    });
+  } else {
+    const diffAbs = Math.round(Math.abs(kmDiff) / 1000);
+    const diffText = kmDiff > 0
+      ? `Lleva ${diffAbs}k km más de lo esperado para su año.`
+      : `Lleva ${diffAbs}k km menos de lo esperado — positivo.`;
+    advices.push({
+      icon: 'i', type: 'neutral', title: 'Kilometraje normal',
+      text: `${avgKmPerYear.toLocaleString()} km/año — dentro del promedio nacional. ${diffText}`
+    });
+  }
+
+  // Year / age advice
+  if (ageYears <= 2) {
+    advices.push({
+      icon: '✓', type: 'positive', title: `Auto reciente (${ageYears} año${ageYears !== 1 ? 's' : ''})`,
+      text: `Probablemente dentro de garantía de fábrica. La depreciación inicial ya ocurrió — buen equilibrio entre precio y tecnología actual.`
+    });
+  } else if (ageYears <= 5) {
+    advices.push({
+      icon: 'i', type: 'neutral', title: `${ageYears} años de antigüedad`,
+      text: `Depreciación moderada completada. Verifica estado de garantías extendidas. Buena relación precio-tecnología.`
+    });
+  } else if (ageYears <= 10) {
+    advices.push({
+      icon: 'i', type: 'neutral', title: `${ageYears} años de antigüedad`,
+      text: `Depreciación significativa ya aplicada. Presupuesta correa de distribución, líquidos y frenos si no se han reemplazado recientemente.`
+    });
+  } else {
+    advices.push({
+      icon: '!', type: 'warning', title: `${ageYears} años de antigüedad`,
+      text: `Vehículo mayor. Considera inspección mecánica completa. La depreciación está casi completa — el precio debería ser muy accesible.`
+    });
+  }
+
+  // Condition advice
+  const conditionAdvice = {
+    excellent: { icon: '✓', type: 'positive', title: 'Condición excelente', text: 'Auto en estado superior. Solicita historial de servicio completo para validar. Precio premium es justificado.' },
+    good:      { icon: '✓', type: 'positive', title: 'Buena condición',     text: 'Desgaste normal para su uso. Revisa luces, líquidos y neumáticos. Poco margen de negociación esperado.' },
+    fair:      { icon: '!', type: 'warning',  title: 'Condición regular',   text: 'Puede tener detalles mecánicos o estéticos. Negocia considerando costo de reparaciones (~$5,000–$15,000 MXN).' },
+    poor:      { icon: '!', type: 'warning',  title: 'Condición deficiente', text: 'Requiere reparaciones. Pide cotización de taller antes de cerrar. Un descuento de 15–25% es razonable.' }
+  };
+  advices.push(conditionAdvice[condition] || conditionAdvice.good);
+
+  const typeStyles = {
+    positive: { bg: 'var(--green-light)', border: '#bbf7d0', text: '#15803d' },
+    warning:  { bg: 'var(--yellow-light)', border: '#fde68a', text: '#b45309' },
+    neutral:  { bg: 'var(--blue-light)',   border: '#bfdbfe', text: '#1d4ed8' }
+  };
+
+  return (
+    <div style={{ marginTop: 20, background: 'var(--white)', borderRadius: 14, padding: '20px 24px', border: '1px solid var(--gray-200)', boxShadow: 'var(--shadow-sm)' }}>
+      <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--gray-800)', marginBottom: 14 }}>
+        Consejo del Valuador
+      </h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {advices.map((a, i) => {
+          const s = typeStyles[a.type];
+          return (
+            <div key={i} style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 20, height: 20, borderRadius: '50%', background: s.text, color: 'var(--white)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>
+                {a.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: s.text, marginBottom: 2 }}>{a.title}</div>
+                <p style={{ fontSize: 13, color: s.text, lineHeight: 1.5, margin: 0 }}>{a.text}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function PriceSummary({ prices, vehicle, priceGuide, analysis }) {
   if (!prices) return null;
 
   const { fairMarketValue, privateSale, dealerRetail, tradeIn, adjustments } = prices;
@@ -179,19 +292,19 @@ export default function PriceSummary({ prices, vehicle, priceGuide }) {
   return (
     <div style={{ animation: 'fadeIn 0.5s ease both' }}>
       {/* Vehicle Header */}
-      <div style={{
+      <div className="vehicle-header" style={{
         background: 'linear-gradient(135deg, var(--black), #1a0208)',
-        borderRadius: 16, padding: '28px 32px', marginBottom: 24,
+        borderRadius: 16, marginBottom: 24,
         border: '1px solid var(--dark-2)', color: 'var(--white)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-          <div>
+        <div className="vehicle-header-inner" style={{ flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, color: 'var(--red-light)', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Valuación AutoValor
             </div>
-            <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 8 }}>
+            <h1 className="vehicle-title" style={{ fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 8 }}>
               {vehicle.make} {vehicle.model} {vehicle.year}
-              {vehicle.trim && <span style={{ color: 'var(--gray-400)', fontSize: 18, marginLeft: 8 }}>{vehicle.trim}</span>}
+              {vehicle.trim && <span className="vehicle-trim" style={{ color: 'var(--gray-400)', marginLeft: 8 }}>{vehicle.trim}</span>}
             </h1>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               {[
@@ -205,10 +318,13 @@ export default function PriceSummary({ prices, vehicle, priceGuide }) {
                 </div>
               ))}
             </div>
+            {analysis?.marketTrend && (
+              <MarketTrendBadge marketTrend={analysis.marketTrend} />
+            )}
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div className="vehicle-price-block">
             <div style={{ fontSize: 12, color: 'var(--gray-500)', marginBottom: 4 }}>Precio Justo de Mercado</div>
-            <div style={{ fontSize: 36, fontWeight: 900, color: 'var(--red-light)', letterSpacing: '-1px' }}>
+            <div className="fair-market-value" style={{ fontWeight: 900, color: 'var(--red-light)', letterSpacing: '-1px' }}>
               {formatMXN(fairMarketValue)}
             </div>
             <div style={{ fontSize: 12, color: 'var(--gray-600)', marginTop: 4 }}>
@@ -275,6 +391,9 @@ export default function PriceSummary({ prices, vehicle, priceGuide }) {
           ))}
         </div>
       </div>
+
+      {/* Buyer Advice */}
+      <BuyerAdvicePanel vehicle={vehicle} />
     </div>
   );
 }

@@ -174,9 +174,10 @@ export default function Results() {
               {tabs.map(tab => (
                 <button
                   key={tab.id}
+                  className="results-tab-btn"
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    padding: '16px 20px', fontSize: 14, fontWeight: 600, border: 'none',
+                    fontWeight: 600, border: 'none',
                     background: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
                     color: activeTab === tab.id ? 'var(--red-primary)' : 'var(--gray-500)',
                     borderBottom: activeTab === tab.id ? '3px solid var(--red-primary)' : '3px solid transparent',
@@ -235,7 +236,7 @@ export default function Results() {
 
           {/* Tab content */}
           {activeTab === 'price' && priceData && (
-            <PriceSummary prices={priceData.prices} vehicle={priceData.vehicle} priceGuide={priceData.priceGuide} />
+            <PriceSummary prices={priceData.prices} vehicle={priceData.vehicle} priceGuide={priceData.priceGuide} analysis={priceData.analysis} />
           )}
 
           {activeTab === 'listings' && (

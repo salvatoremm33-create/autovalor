@@ -138,6 +138,33 @@ img { max-width: 100%; display: block; }
 .nav-link-item { display: flex; }
 
 /* ============================================================
+   VEHICLE HEADER — PriceSummary
+   ============================================================ */
+.vehicle-header { padding: 28px 32px; }
+
+.vehicle-header-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.vehicle-title { font-size: 28px; }
+.vehicle-trim  { font-size: 18px; }
+
+.vehicle-price-block { text-align: right; flex-shrink: 0; }
+.fair-market-value   { font-size: 36px; }
+
+/* Search main card */
+.search-main-card { padding: 32px; }
+
+/* Mileage input row */
+.mileage-row         { display: flex; gap: 10px; }
+.mileage-submit-btn  { padding: 0 24px; }
+
+/* Results tab buttons */
+.results-tab-btn { padding: 16px 20px; font-size: 14px; }
+
+/* ============================================================
    MOBILE  ≤ 639 px  (iPhone SE → iPhone 15 Pro)
    ============================================================ */
 @media (max-width: 639px) {
@@ -163,6 +190,24 @@ img { max-width: 100%; display: block; }
 
   /* Step bar: left-align so it scrolls from the start */
   .step-bar { justify-content: flex-start; }
+
+  /* Vehicle header — smaller padding and stacked layout */
+  .vehicle-header { padding: 20px 16px; }
+  .vehicle-header-inner { flex-direction: column; }
+  .vehicle-price-block { text-align: left; }
+  .vehicle-title { font-size: 20px; }
+  .vehicle-trim  { font-size: 14px; }
+  .fair-market-value { font-size: 26px; }
+
+  /* Search main card — less padding on mobile */
+  .search-main-card { padding: 20px 16px; }
+
+  /* Mileage row stacks on mobile */
+  .mileage-row        { flex-direction: column; }
+  .mileage-submit-btn { width: 100%; height: 48px; padding: 0; }
+
+  /* Results tabs — smaller on mobile so all 5 tabs fit */
+  .results-tab-btn { padding: 12px 12px; font-size: 12px; }
 }
 
 /* ============================================================
