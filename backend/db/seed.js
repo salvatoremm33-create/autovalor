@@ -1,551 +1,440 @@
 require('dotenv').config();
 const db = require('./connection');
+const { MAKES_DATA, TRIMS_DATA } = require('./catalog');
 
-// Each model can define yearStart / yearEnd; defaults: 2015 – 2026
 const YEAR_DEFAULT_START = 2015;
 const YEAR_DEFAULT_END   = 2026;
 
-const seedData = {
-  makes: [
-    { name: 'Audi',          country: 'Germany',     popular: false },
-    { name: 'BMW',           country: 'Germany',     popular: false },
-    { name: 'Chevrolet',     country: 'USA',         popular: true  },
-    { name: 'Ford',          country: 'USA',         popular: true  },
-    { name: 'GMC',           country: 'USA',         popular: false },
-    { name: 'Honda',         country: 'Japan',       popular: true  },
-    { name: 'Hyundai',       country: 'South Korea', popular: true  },
-    { name: 'Jeep',          country: 'USA',         popular: false },
-    { name: 'Kia',           country: 'South Korea', popular: true  },
-    { name: 'Mazda',         country: 'Japan',       popular: true  },
-    { name: 'Mercedes-Benz', country: 'Germany',     popular: false },
-    { name: 'Mitsubishi',    country: 'Japan',       popular: false },
-    { name: 'Nissan',        country: 'Japan',       popular: true  },
-    { name: 'Peugeot',       country: 'France',      popular: false },
-    { name: 'RAM',           country: 'USA',         popular: false },
-    { name: 'Renault',       country: 'France',      popular: false },
-    { name: 'SEAT',          country: 'Spain',       popular: true  },
-    { name: 'Suzuki',        country: 'Japan',       popular: false },
-    { name: 'Toyota',        country: 'Japan',       popular: true  },
-    { name: 'Volkswagen',    country: 'Germany',     popular: true  }
-  ],
+// ─── Make metadata (country + popular) ───────────────────────────────────────
 
-  models: {
-    'Nissan': [
-      { name: 'Versa',     body_type: 'Sedan',   segment: 'Subcompact',      popular: true  },
-      { name: 'Kicks',     body_type: 'SUV',     segment: 'Subcompact SUV',  popular: true  },
-      { name: 'Sentra',    body_type: 'Sedan',   segment: 'Compact',         popular: true  },
-      { name: 'X-Trail',   body_type: 'SUV',     segment: 'Compact SUV',     popular: true  },
-      { name: 'NP300',     body_type: 'Pickup',  segment: 'Pickup',          popular: true  },
-      { name: 'Altima',    body_type: 'Sedan',   segment: 'Midsize',         popular: false },
-      { name: 'Frontier',  body_type: 'Pickup',  segment: 'Midsize Pickup',  popular: false },
-      { name: 'Pathfinder',body_type: 'SUV',     segment: 'Midsize SUV',     popular: false }
-    ],
-    'Chevrolet': [
-      { name: 'Spark',     body_type: 'Hatchback',segment: 'Minicompact',    popular: true  },
-      { name: 'Aveo',      body_type: 'Sedan',   segment: 'Subcompact',      popular: true  },
-      { name: 'Cavalier',  body_type: 'Sedan',   segment: 'Compact',         popular: true,  yearStart: 2018 },
-      { name: 'Tracker',   body_type: 'SUV',     segment: 'Subcompact SUV',  popular: true,  yearStart: 2020 },
-      { name: 'Trax',      body_type: 'SUV',     segment: 'Subcompact SUV',  popular: true  },
-      { name: 'Equinox',   body_type: 'SUV',     segment: 'Compact SUV',     popular: true  },
-      { name: 'Silverado', body_type: 'Pickup',  segment: 'Full-size Pickup',popular: true  },
-      { name: 'Blazer',    body_type: 'SUV',     segment: 'Midsize SUV',     popular: false, yearStart: 2019 },
-      { name: 'Tahoe',     body_type: 'SUV',     segment: 'Full-size SUV',   popular: false }
-    ],
-    'Toyota': [
-      { name: 'Yaris',       body_type: 'Sedan',  segment: 'Subcompact',     popular: true  },
-      { name: 'Corolla',     body_type: 'Sedan',  segment: 'Compact',        popular: true  },
-      { name: 'Camry',       body_type: 'Sedan',  segment: 'Midsize',        popular: true  },
-      { name: 'RAV4',        body_type: 'SUV',    segment: 'Compact SUV',    popular: true  },
-      { name: 'Hilux',       body_type: 'Pickup', segment: 'Midsize Pickup', popular: true  },
-      { name: 'Tacoma',      body_type: 'Pickup', segment: 'Midsize Pickup', popular: false },
-      { name: 'Fortuner',    body_type: 'SUV',    segment: 'Midsize SUV',    popular: false },
-      { name: 'Land Cruiser',body_type: 'SUV',    segment: 'Full-size SUV',  popular: false }
-    ],
-    'Volkswagen': [
-      { name: 'Vento',    body_type: 'Sedan',    segment: 'Compact',        popular: true  },
-      { name: 'Jetta',    body_type: 'Sedan',    segment: 'Compact',        popular: true  },
-      { name: 'Virtus',   body_type: 'Sedan',    segment: 'Compact',        popular: true,  yearStart: 2020 },
-      { name: 'T-Cross',  body_type: 'SUV',      segment: 'Subcompact SUV', popular: true,  yearStart: 2020 },
-      { name: 'Tiguan',   body_type: 'SUV',      segment: 'Compact SUV',    popular: true  },
-      { name: 'Polo',     body_type: 'Hatchback', segment: 'Subcompact',    popular: false },
-      { name: 'Taos',     body_type: 'SUV',      segment: 'Compact SUV',    popular: false, yearStart: 2021 },
-      { name: 'Touareg',  body_type: 'SUV',      segment: 'Midsize SUV',    popular: false }
-    ],
-    'Kia': [
-      { name: 'Rio',      body_type: 'Sedan',    segment: 'Subcompact',     popular: true  },
-      { name: 'Forte',    body_type: 'Sedan',    segment: 'Compact',        popular: true  },
-      { name: 'Sportage', body_type: 'SUV',      segment: 'Compact SUV',    popular: true  },
-      { name: 'Seltos',   body_type: 'SUV',      segment: 'Subcompact SUV', popular: true,  yearStart: 2020 },
-      { name: 'Sorento',  body_type: 'SUV',      segment: 'Midsize SUV',    popular: false },
-      { name: 'Picanto',  body_type: 'Hatchback', segment: 'Minicompact',   popular: false }
-    ],
-    'Honda': [
-      { name: 'City',   body_type: 'Sedan', segment: 'Subcompact',   popular: true  },
-      { name: 'Civic',  body_type: 'Sedan', segment: 'Compact',      popular: true  },
-      { name: 'HR-V',   body_type: 'SUV',  segment: 'Subcompact SUV',popular: true  },
-      { name: 'CR-V',   body_type: 'SUV',  segment: 'Compact SUV',   popular: true  },
-      { name: 'Accord', body_type: 'Sedan', segment: 'Midsize',      popular: false },
-      { name: 'Pilot',  body_type: 'SUV',  segment: 'Midsize SUV',   popular: false }
-    ],
-    'Ford': [
-      { name: 'F-150',    body_type: 'Pickup', segment: 'Full-size Pickup', popular: true  },
-      { name: 'EcoSport', body_type: 'SUV',   segment: 'Subcompact SUV',   popular: true,  yearEnd: 2022 },
-      { name: 'Escape',   body_type: 'SUV',   segment: 'Compact SUV',      popular: true  },
-      { name: 'Explorer', body_type: 'SUV',   segment: 'Midsize SUV',      popular: true  },
-      { name: 'Bronco',   body_type: 'SUV',   segment: 'Compact SUV',      popular: false, yearStart: 2021 },
-      { name: 'Ranger',   body_type: 'Pickup', segment: 'Midsize Pickup',  popular: false, yearStart: 2019 },
-      { name: 'Maverick', body_type: 'Pickup', segment: 'Compact Pickup',  popular: false, yearStart: 2022 }
-    ],
-    'Mazda': [
-      { name: 'Mazda2', body_type: 'Sedan', segment: 'Subcompact',    popular: true  },
-      { name: 'Mazda3', body_type: 'Sedan', segment: 'Compact',       popular: true  },
-      { name: 'CX-30',  body_type: 'SUV',  segment: 'Subcompact SUV', popular: true,  yearStart: 2020 },
-      { name: 'CX-5',   body_type: 'SUV',  segment: 'Compact SUV',   popular: true  },
-      { name: 'Mazda6', body_type: 'Sedan', segment: 'Midsize',       popular: false },
-      { name: 'CX-9',   body_type: 'SUV',  segment: 'Midsize SUV',   popular: false }
-    ],
-    'Hyundai': [
-      { name: 'Grand i10', body_type: 'Sedan', segment: 'Subcompact',    popular: true  },
-      { name: 'Elantra',   body_type: 'Sedan', segment: 'Compact',       popular: true  },
-      { name: 'Creta',     body_type: 'SUV',   segment: 'Subcompact SUV',popular: true,  yearStart: 2017 },
-      { name: 'Tucson',    body_type: 'SUV',   segment: 'Compact SUV',   popular: true  },
-      { name: 'Santa Fe',  body_type: 'SUV',   segment: 'Midsize SUV',   popular: false }
-    ],
-    'SEAT': [
-      { name: 'Ibiza',   body_type: 'Hatchback', segment: 'Subcompact',  popular: true  },
-      { name: 'Leon',    body_type: 'Hatchback', segment: 'Compact',     popular: true  },
-      { name: 'Ateca',   body_type: 'SUV',       segment: 'Compact SUV', popular: true  },
-      { name: 'Tarraco', body_type: 'SUV',       segment: 'Midsize SUV', popular: false, yearStart: 2019 }
-    ]
-  }
+const MAKE_META = {
+  'Acura':         { country: 'Japan',       popular: false },
+  'Alfa Romeo':    { country: 'Italy',        popular: false },
+  'Audi':          { country: 'Germany',      popular: false },
+  'BAIC':          { country: 'China',        popular: false },
+  'Bestune':       { country: 'China',        popular: false },
+  'BMW':           { country: 'Germany',      popular: false },
+  'Buick':         { country: 'USA',          popular: false },
+  'BYD':           { country: 'China',        popular: true  },
+  'Cadillac':      { country: 'USA',          popular: false },
+  'Changan':       { country: 'China',        popular: true  },
+  'Chevrolet':     { country: 'USA',          popular: true  },
+  'Chirey':        { country: 'China',        popular: true  },
+  'Chrysler':      { country: 'USA',          popular: false },
+  'Cupra':         { country: 'Spain',        popular: false },
+  'Dodge':         { country: 'USA',          popular: false },
+  'Ferrari':       { country: 'Italy',        popular: false },
+  'Fiat':          { country: 'Italy',        popular: false },
+  'Ford':          { country: 'USA',          popular: true  },
+  'GAC':           { country: 'China',        popular: false },
+  'Geely':         { country: 'China',        popular: false },
+  'GMC':           { country: 'USA',          popular: false },
+  'GWM':           { country: 'China',        popular: false },
+  'Honda':         { country: 'Japan',        popular: true  },
+  'Hyundai':       { country: 'South Korea',  popular: true  },
+  'INEOS':         { country: 'UK',           popular: false },
+  'Infiniti':      { country: 'Japan',        popular: false },
+  'JAC':           { country: 'China',        popular: false },
+  'JAECOO':        { country: 'China',        popular: false },
+  'Jaguar':        { country: 'UK',           popular: false },
+  'Jeep':          { country: 'USA',          popular: false },
+  'Jetour':        { country: 'China',        popular: false },
+  'Kia':           { country: 'South Korea',  popular: true  },
+  'Land Rover':    { country: 'UK',           popular: false },
+  'Lexus':         { country: 'Japan',        popular: false },
+  'Lincoln':       { country: 'USA',          popular: false },
+  'Maserati':      { country: 'Italy',        popular: false },
+  'Mazda':         { country: 'Japan',        popular: true  },
+  'Mercedes-Benz': { country: 'Germany',      popular: false },
+  'MG':            { country: 'China',        popular: true  },
+  'Mini':          { country: 'UK',           popular: false },
+  'Mitsubishi':    { country: 'Japan',        popular: false },
+  'Nissan':        { country: 'Japan',        popular: true  },
+  'Omoda':         { country: 'China',        popular: false },
+  'Peugeot':       { country: 'France',       popular: false },
+  'Porsche':       { country: 'Germany',      popular: false },
+  'Renault':       { country: 'France',       popular: false },
+  'Seat':          { country: 'Spain',        popular: false },
+  'SERES':         { country: 'China',        popular: false },
+  'Smart':         { country: 'Germany',      popular: false },
+  'Subaru':        { country: 'Japan',        popular: false },
+  'Suzuki':        { country: 'Japan',        popular: false },
+  'Tesla':         { country: 'USA',          popular: false },
+  'Toyota':        { country: 'Japan',        popular: true  },
+  'Volkswagen':    { country: 'Germany',      popular: true  },
+  'Volvo':         { country: 'Sweden',       popular: false },
+  'Zeekr':         { country: 'China',        popular: false },
 };
 
-// ─── Trims per model ─────────────────────────────────────────────────────────
+// ─── Model metadata (body_type + segment + optional yearStart/yearEnd) ────────
 
-const trimsByModel = {
+const MODEL_META = {
   // Nissan
-  'Versa': [
-    { name: 'Sense',    engine: '1.6L 4-cil 109hp', transmission: 'Manual 5 vel',  fuel_type: 'Gasolina' },
-    { name: 'Advance',  engine: '1.6L 4-cil 109hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Exclusive',engine: '1.6L 4-cil 109hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'Kicks': [
-    { name: 'Sense',    engine: '1.6L 4-cil 122hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Advance',  engine: '1.6L 4-cil 122hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Exclusive',engine: '1.6L 4-cil 122hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'Sentra': [
-    { name: 'Sense',    engine: '2.0L 4-cil 149hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Advance',  engine: '2.0L 4-cil 149hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Exclusive',engine: '2.0L 4-cil 149hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'X-Trail': [
-    { name: 'Sense',    engine: '2.5L 4-cil 170hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Advance',  engine: '2.5L 4-cil 170hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Exclusive',engine: '2.5L 4-cil 170hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'NP300': [
-    { name: 'S MT',     engine: '2.5L 4-cil 152hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'SL AT',    engine: '2.5L 4-cil 152hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Pro-4X',   engine: '2.5L 4-cil 152hp', transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Altima': [
-    { name: 'Sense',    engine: '2.5L 4-cil 188hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Advance',  engine: '2.5L 4-cil 188hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Exclusive',engine: '2.5L 4-cil 188hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'Frontier': [
-    { name: 'S MT',     engine: '2.5L 4-cil 152hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'SL AT',    engine: '2.5L 4-cil 152hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Pro-4X AT',engine: '4.0L V6 261hp',    transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Pathfinder': [
-    { name: 'Sense',    engine: '3.5L V6 284hp',    transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Advance',  engine: '3.5L V6 284hp',    transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Exclusive',engine: '3.5L V6 284hp',    transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-
+  'Versa':          { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Kicks':          { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true  },
+  'March':          { body_type: 'Hatchback', segment: 'Minicompact',     popular: true  },
+  'X-Trail':        { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Altima':         { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'Pathfinder':     { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Leaf':           { body_type: 'Hatchback', segment: 'Compact',         popular: false },
+  'Juke':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
   // Chevrolet
-  'Spark': [
-    { name: 'LT MT',    engine: '1.4L 4-cil 98hp',  transmission: 'Manual 5 vel',  fuel_type: 'Gasolina' },
-    { name: 'LT AT',    engine: '1.4L 4-cil 98hp',  transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Premier',  engine: '1.4L 4-cil 98hp',  transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Aveo': [
-    { name: 'LS MT',    engine: '1.5L 4-cil 106hp', transmission: 'Manual 5 vel',  fuel_type: 'Gasolina' },
-    { name: 'LT AT',    engine: '1.5L 4-cil 106hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Premier',  engine: '1.5L 4-cil 106hp', transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Cavalier': [
-    { name: 'LS MT',    engine: '1.5L Turbo 172hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'LT AT',    engine: '1.5L Turbo 172hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Premier',  engine: '1.5L Turbo 172hp', transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Tracker': [
-    { name: 'LS CVT',   engine: '1.2L Turbo 133hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'LT CVT',   engine: '1.2L Turbo 133hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'RS CVT',   engine: '1.2L Turbo 133hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Premier CVT',engine:'1.2L Turbo 133hp', transmission: 'CVT',          fuel_type: 'Gasolina' }
-  ],
-  'Trax': [
-    { name: 'LS MT',    engine: '1.4L Turbo 138hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'LT AT',    engine: '1.4L Turbo 138hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Premier',  engine: '1.4L Turbo 138hp', transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Equinox': [
-    { name: 'LS AT',    engine: '1.5L Turbo 170hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'LT AT',    engine: '1.5L Turbo 170hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Premier',  engine: '2.0L Turbo 252hp', transmission: 'Automático 9 vel',fuel_type:'Gasolina' }
-  ],
-  'Silverado': [
-    { name: 'LT AT',    engine: '5.3L V8 355hp',    transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'LTZ AT',   engine: '5.3L V8 355hp',    transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'High Country',engine:'6.2L V8 420hp',  transmission: 'Automático 10 vel',fuel_type:'Gasolina'}
-  ],
-  'Blazer': [
-    { name: 'LT AT',    engine: '2.5L 4-cil 193hp', transmission: 'Automático 9 vel',fuel_type:'Gasolina' },
-    { name: 'Premier',  engine: '3.6L V6 308hp',    transmission: 'Automático 9 vel',fuel_type:'Gasolina' },
-    { name: 'RS',       engine: '2.0L Turbo 228hp', transmission: 'Automático 9 vel',fuel_type:'Gasolina' }
-  ],
-  'Tahoe': [
-    { name: 'LT AT',    engine: '5.3L V8 355hp',    transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Premier',  engine: '5.3L V8 355hp',    transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'High Country',engine:'6.2L V8 420hp',  transmission: 'Automático 10 vel',fuel_type:'Gasolina'}
-  ],
-
+  'Spark':          { body_type: 'Hatchback', segment: 'Minicompact',     popular: true  },
+  'Aveo':           { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Onix':           { body_type: 'Sedan',     segment: 'Subcompact',      popular: true,  yearStart: 2021 },
+  'Cavalier':       { body_type: 'Sedan',     segment: 'Compact',         popular: true,  yearStart: 2018 },
+  'Tracker':        { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true,  yearStart: 2020 },
+  'Trax':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true  },
+  'Equinox':        { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Tahoe':          { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  'Suburban':       { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
   // Toyota
-  'Yaris': [
-    { name: 'S MT',     engine: '1.5L 4-cil 107hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'S AT',     engine: '1.5L 4-cil 107hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'XLE AT',   engine: '1.5L 4-cil 107hp', transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Corolla': [
-    { name: 'Base',     engine: '1.8L 4-cil 140hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'LE',       engine: '1.8L 4-cil 140hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'SE',       engine: '2.0L 4-cil 169hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'XSE',      engine: '2.0L 4-cil 169hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'Camry': [
-    { name: 'LE AT',    engine: '2.5L 4-cil 203hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'SE AT',    engine: '2.5L 4-cil 203hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'XSE V6',  engine: '3.5L V6 301hp',    transmission: 'Automático 8 vel',fuel_type:'Gasolina' }
-  ],
-  'RAV4': [
-    { name: 'LE AT',    engine: '2.5L 4-cil 203hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'XLE AT',   engine: '2.5L 4-cil 203hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'XLE Premium',engine:'2.5L 4-cil 203hp',transmission: 'Automático 8 vel',fuel_type:'Gasolina' }
-  ],
-  'Hilux': [
-    { name: 'SR MT',    engine: '2.7L 4-cil 166hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'SRV AT',   engine: '2.7L 4-cil 166hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'GR Sport', engine: '2.8L TD 204hp',    transmission: 'Automático 6 vel',fuel_type:'Diésel'  }
-  ],
-  'Tacoma': [
-    { name: 'SR MT',    engine: '2.7L 4-cil 159hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'TRD Sport',engine: '3.5L V6 278hp',    transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'TRD Pro',  engine: '3.5L V6 278hp',    transmission: 'Automático 6 vel',fuel_type:'Gasolina' }
-  ],
-  'Fortuner': [
-    { name: 'Base AT',  engine: '2.7L 4-cil 166hp', transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'TRD Sport',engine: '2.8L TD 201hp',    transmission: 'Automático 6 vel',fuel_type:'Diésel'  },
-    { name: 'Legender', engine: '2.8L TD 201hp',    transmission: 'Automático 6 vel',fuel_type:'Diésel'  }
-  ],
-  'Land Cruiser': [
-    { name: '200 GXR',  engine: '4.6L V8 309hp',    transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: '300 VX',   engine: '3.3L V6 Hybrid',   transmission: 'Automático',    fuel_type: 'Híbrido' },
-    { name: '300 GR-S', engine: '3.3L V6 Hybrid',   transmission: 'Automático',    fuel_type: 'Híbrido' }
-  ],
-
+  'Yaris':          { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Corolla':        { body_type: 'Sedan',     segment: 'Compact',         popular: true  },
+  'Camry':          { body_type: 'Sedan',     segment: 'Midsize',         popular: true  },
+  'RAV4':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Tacoma':         { body_type: 'Pickup',    segment: 'Midsize Pickup',  popular: false },
+  'Land Cruiser':   { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  'C-HR':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false, yearStart: 2018 },
+  'Avanza':         { body_type: 'Van',       segment: 'Compact MPV',     popular: false },
+  'Prius':          { body_type: 'Sedan',     segment: 'Compact',         popular: false },
+  '4Runner':        { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
   // Volkswagen
-  'Vento': [
-    { name: 'Trendline MT',engine:'1.6L 4-cil 101hp',transmission:'Manual 5 vel',  fuel_type:'Gasolina'  },
-    { name: 'Comfortline', engine:'1.6L 4-cil 101hp',transmission:'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Highline',    engine:'1.6L 4-cil 101hp',transmission:'Automático 6 vel',fuel_type:'Gasolina' }
-  ],
-  'Jetta': [
-    { name: 'Trendline',  engine: '1.4L Turbo 150hp',transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'Highline',   engine: '1.4L Turbo 150hp',transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'GLI',        engine: '2.0L Turbo 228hp',transmission: 'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Virtus': [
-    { name: 'Trendline',  engine: '1.6L 4-cil 104hp',transmission: 'Manual 5 vel',  fuel_type: 'Gasolina' },
-    { name: 'Comfortline',engine: '1.6L 4-cil 104hp',transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Highline',   engine: '1.6L 4-cil 104hp',transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'T-Cross': [
-    { name: 'Trendline',  engine: '1.0L Turbo 115hp',transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Comfortline',engine: '1.0L Turbo 115hp',transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Highline',   engine: '1.5L Turbo 150hp',transmission: 'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Tiguan': [
-    { name: 'Trendline',  engine: '1.4L Turbo 150hp',transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'Comfortline',engine: '2.0L Turbo 220hp',transmission: 'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'Highline',   engine: '2.0L Turbo 220hp',transmission: 'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'R-Line',     engine: '2.0L Turbo 220hp',transmission: 'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Polo': [
-    { name: 'Trendline',  engine: '1.6L 4-cil 101hp',transmission: 'Manual 5 vel',  fuel_type: 'Gasolina' },
-    { name: 'Comfortline',engine: '1.6L 4-cil 101hp',transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Highline',   engine: '1.6L 4-cil 101hp',transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Taos': [
-    { name: 'Trendline',  engine: '1.4L Turbo 150hp',transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Comfortline',engine: '1.4L Turbo 150hp',transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Highline',   engine: '1.4L Turbo 150hp',transmission: 'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Touareg': [
-    { name: 'Elegance',   engine: '3.0L V6 TSI 340hp',transmission:'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'R-Line',     engine: '3.0L V6 TSI 340hp',transmission:'Automático 8 vel',fuel_type:'Gasolina' }
-  ],
-
+  'Vento':          { body_type: 'Sedan',     segment: 'Compact',         popular: true  },
+  'Jetta A7':       { body_type: 'Sedan',     segment: 'Compact',         popular: true  },
+  'Jetta A6':       { body_type: 'Sedan',     segment: 'Compact',         popular: false, yearEnd: 2021 },
+  'Jetta A4':       { body_type: 'Sedan',     segment: 'Compact',         popular: false, yearEnd: 2017 },
+  'T-Cross':        { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true,  yearStart: 2020 },
+  'Tiguan':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Polo':           { body_type: 'Hatchback', segment: 'Subcompact',      popular: false },
+  'Virtus':         { body_type: 'Sedan',     segment: 'Compact',         popular: true,  yearStart: 2020 },
+  'Taos':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2021 },
+  'Touareg':        { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Teramont':       { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  'Nivus':          { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false, yearStart: 2022 },
+  'Amarok':         { body_type: 'Pickup',    segment: 'Midsize Pickup',  popular: false },
   // Kia
-  'Rio': [
-    { name: 'L MT',     engine: '1.6L 4-cil 120hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'LX AT',    engine: '1.6L 4-cil 120hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'EX AT',    engine: '1.6L 4-cil 120hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' }
-  ],
-  'Forte': [
-    { name: 'L MT',     engine: '2.0L 4-cil 147hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'EX AT',    engine: '2.0L 4-cil 147hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'EX+ AT',   engine: '1.6L Turbo 201hp', transmission: 'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Sportage': [
-    { name: 'LX AT',    engine: '2.0L 4-cil 155hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'EX AT',    engine: '2.0L 4-cil 155hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'SX AT',    engine: '2.4L 4-cil 181hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' }
-  ],
-  'Seltos': [
-    { name: 'LX AT',    engine: '2.0L 4-cil 149hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'EX AT',    engine: '2.0L 4-cil 149hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'EX+ AT',   engine: '1.6L Turbo 175hp', transmission: 'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Sorento': [
-    { name: 'LX AT',    engine: '2.5L 4-cil 191hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'EX AT',    engine: '2.5L 4-cil 191hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'SX AT',    engine: '2.5L Turbo 281hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' }
-  ],
-  'Picanto': [
-    { name: 'LX MT',    engine: '1.2L 4-cil 84hp',  transmission: 'Manual 5 vel',  fuel_type: 'Gasolina' },
-    { name: 'EX AT',    engine: '1.2L 4-cil 84hp',  transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-
+  'Rio':            { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Forte':          { body_type: 'Sedan',     segment: 'Compact',         popular: true  },
+  'Sportage':       { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Seltos':         { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true,  yearStart: 2020 },
+  'Sorento':        { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Telluride':      { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  'Stinger':        { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'Niro':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
   // Honda
-  'City': [
-    { name: 'Uniq CVT', engine: '1.5L 4-cil 120hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Sport CVT',engine: '1.5L 4-cil 120hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'EX CVT',   engine: '1.5L 4-cil 120hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'Civic': [
-    { name: 'Uniq CVT', engine: '1.5L Turbo 174hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Sport CVT',engine: '1.5L Turbo 174hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Touring CVT',engine:'1.5L Turbo 174hp',transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'HR-V': [
-    { name: 'Uniq CVT', engine: '1.8L 4-cil 141hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Sport CVT',engine: '1.8L 4-cil 141hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'EX CVT',   engine: '1.8L 4-cil 141hp', transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'CR-V': [
-    { name: 'Uniq CVT', engine: '1.5L Turbo 190hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Sport CVT',engine: '1.5L Turbo 190hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'Touring CVT',engine:'1.5L Turbo 190hp',transmission: 'CVT',           fuel_type: 'Gasolina' }
-  ],
-  'Accord': [
-    { name: 'Sport',    engine: '1.5L Turbo 192hp', transmission: 'CVT',           fuel_type: 'Gasolina' },
-    { name: 'EX-L',     engine: '2.0L Turbo 252hp', transmission: 'Automático 10 vel',fuel_type:'Gasolina' },
-    { name: 'Touring',  engine: '2.0L Turbo 252hp', transmission: 'Automático 10 vel',fuel_type:'Gasolina' }
-  ],
-  'Pilot': [
-    { name: 'LX AT',    engine: '3.5L V6 280hp',    transmission: 'Automático 9 vel',fuel_type:'Gasolina' },
-    { name: 'EX-L AT',  engine: '3.5L V6 280hp',    transmission: 'Automático 9 vel',fuel_type:'Gasolina' },
-    { name: 'Black Edition',engine:'3.5L V6 280hp',  transmission: 'Automático 9 vel',fuel_type:'Gasolina' }
-  ],
-
-  // Ford — F-150 uses the exact trims requested by user
-  'F-150': [
-    { name: 'Base TA',     engine: '3.3L V6 290hp',    transmission: 'Automático 10 vel', fuel_type: 'Gasolina' },
-    { name: 'XLT TA',     engine: '2.7L V6 EcoBoost 325hp', transmission: 'Automático 10 vel', fuel_type: 'Gasolina' },
-    { name: 'Limited TA', engine: '3.5L V6 EcoBoost 400hp', transmission: 'Automático 10 vel', fuel_type: 'Gasolina' },
-    { name: 'Platinum TA',engine: '3.5L V6 EcoBoost 400hp', transmission: 'Automático 10 vel', fuel_type: 'Gasolina' },
-    { name: 'ST TA',      engine: '5.0L V8 400hp',    transmission: 'Automático 10 vel', fuel_type: 'Gasolina' }
-  ],
-  'EcoSport': [
-    { name: 'S MT',     engine: '1.0L Turbo 123hp', transmission: 'Manual 6 vel',  fuel_type: 'Gasolina' },
-    { name: 'SE AT',    engine: '2.0L 4-cil 166hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Titanium', engine: '2.0L 4-cil 166hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' }
-  ],
-  'Escape': [
-    { name: 'S AT',     engine: '1.5L EcoBoost 181hp',transmission:'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'SE AT',    engine: '1.5L EcoBoost 181hp',transmission:'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'Titanium', engine: '2.0L EcoBoost 250hp',transmission:'Automático 8 vel',fuel_type:'Gasolina' }
-  ],
-  'Explorer': [
-    { name: 'Base AT',  engine: '2.3L EcoBoost 300hp',transmission:'Automático 10 vel',fuel_type:'Gasolina' },
-    { name: 'XLT AT',   engine: '2.3L EcoBoost 300hp',transmission:'Automático 10 vel',fuel_type:'Gasolina' },
-    { name: 'Platinum', engine: '3.0L EcoBoost 400hp',transmission:'Automático 10 vel',fuel_type:'Gasolina' }
-  ],
-  'Bronco': [
-    { name: 'Base MT',  engine: '2.3L EcoBoost 300hp',transmission:'Manual 7 vel',  fuel_type:'Gasolina'  },
-    { name: 'Big Bend', engine: '2.3L EcoBoost 300hp',transmission:'Automático 10 vel',fuel_type:'Gasolina'},
-    { name: 'Wildtrak', engine: '2.7L EcoBoost 330hp',transmission:'Automático 10 vel',fuel_type:'Gasolina'}
-  ],
-  'Ranger': [
-    { name: 'XL MT',    engine: '2.3L EcoBoost 270hp',transmission:'Manual 6 vel',  fuel_type:'Gasolina'  },
-    { name: 'XLT AT',   engine: '2.3L EcoBoost 270hp',transmission:'Automático 10 vel',fuel_type:'Gasolina'},
-    { name: 'Tremor',   engine: '2.3L EcoBoost 270hp',transmission:'Automático 10 vel',fuel_type:'Gasolina'}
-  ],
-  'Maverick': [
-    { name: 'XL Hybrid',engine: '2.5L Híbrido 191hp',transmission: 'CVT',           fuel_type: 'Híbrido' },
-    { name: 'XLT AT',   engine: '2.0L EcoBoost 250hp',transmission:'Automático',    fuel_type: 'Gasolina' },
-    { name: 'Lariat AT',engine: '2.0L EcoBoost 250hp',transmission:'Automático',    fuel_type: 'Gasolina' }
-  ],
-
+  'City':           { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Civic':          { body_type: 'Sedan',     segment: 'Compact',         popular: true  },
+  'HR-V':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true  },
+  'CR-V':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Accord':         { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'Pilot':          { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'BR-V':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  // Ford
+  'F-150':          { body_type: 'Pickup',    segment: 'Full-size Pickup', popular: true  },
+  'EcoSport':       { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true,  yearEnd: 2022 },
+  'Escape':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Explorer':       { body_type: 'SUV',       segment: 'Midsize SUV',     popular: true  },
+  'Bronco':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2021 },
+  'Ranger':         { body_type: 'Pickup',    segment: 'Midsize Pickup',  popular: false, yearStart: 2019 },
+  'Maverick':       { body_type: 'Pickup',    segment: 'Compact Pickup',  popular: false, yearStart: 2022 },
+  'Mustang':        { body_type: 'Coupe',     segment: 'Sports',          popular: false },
+  'Territory':      { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2020 },
   // Mazda
-  'Mazda2': [
-    { name: 'i Sport MT',  engine: '1.5L 4-cil 114hp', transmission: 'Manual 6 vel',   fuel_type: 'Gasolina' },
-    { name: 'i Sport AT',  engine: '1.5L 4-cil 114hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'i Grand Touring',engine:'1.5L 4-cil 114hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'}
-  ],
-  'Mazda3': [
-    { name: 'i Sport MT',  engine: '2.0L 4-cil 155hp', transmission: 'Manual 6 vel',   fuel_type: 'Gasolina' },
-    { name: 'i Sport AT',  engine: '2.0L 4-cil 155hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'i Grand Touring',engine:'2.5L 4-cil 191hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'}
-  ],
-  'CX-30': [
-    { name: 'i Sport AT',  engine: '2.0L 4-cil 155hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'i Grand Touring',engine:'2.0L 4-cil 155hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'},
-    { name: 's Grand Touring',engine:'2.5L Turbo 227hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'}
-  ],
-  'CX-5': [
-    { name: 'i Sport AT',  engine: '2.0L 4-cil 155hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'i Grand Touring',engine:'2.5L 4-cil 187hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'},
-    { name: 's Grand Touring',engine:'2.5L Turbo 227hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'}
-  ],
-  'Mazda6': [
-    { name: 'i Sport AT',  engine: '2.5L 4-cil 187hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'i Grand Touring',engine:'2.5L 4-cil 187hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'},
-    { name: 's Grand Touring',engine:'2.5L Turbo 227hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'}
-  ],
-  'CX-9': [
-    { name: 'i Sport AT',  engine: '2.5L Turbo 227hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'i Touring AT',engine: '2.5L Turbo 227hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 's Grand Touring',engine:'2.5L Turbo 250hp',transmission:'Automático 6 vel',fuel_type:'Gasolina'}
-  ],
-
+  'Mazda2':         { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Mazda3':         { body_type: 'Sedan',     segment: 'Compact',         popular: true  },
+  'CX-30':          { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true,  yearStart: 2020 },
+  'CX-5':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Mazda6':         { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'CX-9':           { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'CX-50':          { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2023 },
+  'CX-90':          { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false, yearStart: 2024 },
+  'CX-3':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'MX-5':           { body_type: 'Convertible',segment: 'Sports',         popular: false },
   // Hyundai
-  'Grand i10': [
-    { name: 'GL MT',    engine: '1.2L 4-cil 87hp',  transmission: 'Manual 5 vel',  fuel_type: 'Gasolina' },
-    { name: 'GL AT',    engine: '1.2L 4-cil 87hp',  transmission: 'Automático',    fuel_type: 'Gasolina' },
-    { name: 'GLS AT',   engine: '1.2L 4-cil 87hp',  transmission: 'Automático',    fuel_type: 'Gasolina' }
-  ],
-  'Elantra': [
-    { name: 'GLS AT',   engine: '2.0L 4-cil 152hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Limited',  engine: '1.6L Turbo 201hp', transmission: 'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'N Line',   engine: '1.6L Turbo 201hp', transmission: 'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Creta': [
-    { name: 'GLS AT',   engine: '1.6L 4-cil 123hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Limited',  engine: '1.6L 4-cil 123hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'GLS Premium',engine:'1.6L 4-cil 123hp',transmission:'Automático 6 vel', fuel_type:'Gasolina'}
-  ],
-  'Tucson': [
-    { name: 'GLS AT',   engine: '2.0L 4-cil 155hp', transmission: 'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'Limited',  engine: '1.6L Turbo 178hp', transmission: 'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'GLS Premium',engine:'2.0L 4-cil 155hp',transmission:'Automático 6 vel', fuel_type:'Gasolina'}
-  ],
-  'Santa Fe': [
-    { name: 'GLS AT',   engine: '2.0L Turbo 234hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' },
-    { name: 'Limited',  engine: '2.0L Turbo 234hp', transmission: 'Automático 8 vel',fuel_type:'Gasolina' }
-  ],
-
-  // SEAT
-  'Ibiza': [
-    { name: 'Reference MT',engine:'1.0L Turbo 95hp', transmission:'Manual 5 vel',   fuel_type:'Gasolina'  },
-    { name: 'Style AT',    engine:'1.0L Turbo 95hp', transmission:'Automático',     fuel_type:'Gasolina'  },
-    { name: 'FR AT',       engine:'1.5L Turbo 150hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Leon': [
-    { name: 'Style MT',    engine:'1.5L Turbo 150hp',transmission:'Manual 6 vel',   fuel_type:'Gasolina'  },
-    { name: 'Style AT',    engine:'1.5L Turbo 150hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'FR AT',       engine:'2.0L Turbo 190hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Ateca': [
-    { name: 'Style AT',    engine:'1.4L Turbo 150hp',transmission:'Automático 6 vel',fuel_type:'Gasolina' },
-    { name: 'FR AT',       engine:'2.0L Turbo 190hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'Xcellence',   engine:'2.0L Turbo 190hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' }
-  ],
-  'Tarraco': [
-    { name: 'Style AT',    engine:'1.5L Turbo 150hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'FR AT',       engine:'2.0L Turbo 190hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' },
-    { name: 'Xcellence',   engine:'2.0L Turbo 190hp',transmission:'Automático 7 vel',fuel_type:'Gasolina' }
-  ]
+  'Grand i10':      { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Accent':         { body_type: 'Sedan',     segment: 'Subcompact',      popular: true  },
+  'Elantra':        { body_type: 'Sedan',     segment: 'Compact',         popular: true  },
+  'Creta':          { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true,  yearStart: 2017 },
+  'Tucson':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Santa Fe':       { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Ioniq 5':        { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2022 },
+  // SEAT / Cupra
+  'Ibiza':          { body_type: 'Hatchback', segment: 'Subcompact',      popular: true  },
+  'León':           { body_type: 'Hatchback', segment: 'Compact',         popular: true  },
+  'Ateca':          { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Tarraco':        { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false, yearStart: 2019 },
+  'Formentor':      { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2021 },
+  // Jeep
+  'Renegade':       { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'Compass':        { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Cherokee':       { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'Wrangler':       { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'Grand Cherokee': { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Commander':      { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false, yearStart: 2022 },
+  // Renault
+  'Kwid':           { body_type: 'Hatchback', segment: 'Minicompact',     popular: true  },
+  'Sandero':        { body_type: 'Hatchback', segment: 'Subcompact',      popular: true  },
+  'Logan':          { body_type: 'Sedan',     segment: 'Compact',         popular: false },
+  'Stepway':        { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true  },
+  'Duster':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Koleos':         { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Clio':           { body_type: 'Hatchback', segment: 'Subcompact',      popular: false },
+  'Captur':         { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'Arkana':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2022 },
+  'Kardian':        { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false, yearStart: 2024 },
+  // Peugeot
+  '208':            { body_type: 'Hatchback', segment: 'Subcompact',      popular: false },
+  '2008':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  '3008':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  '5008':           { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  // Suzuki
+  'Swift':          { body_type: 'Hatchback', segment: 'Subcompact',      popular: false },
+  'Vitara':         { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'Grand Vitara':   { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'Jimny':          { body_type: 'SUV',       segment: 'Minicompact SUV', popular: false, yearStart: 2019 },
+  'Ignis':          { body_type: 'Hatchback', segment: 'Minicompact',     popular: false },
+  'Ciaz':           { body_type: 'Sedan',     segment: 'Compact',         popular: false },
+  // Mitsubishi
+  'Eclipse Cross':  { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2018 },
+  'Outlander':      { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'Xpander':        { body_type: 'SUV',       segment: 'Compact MPV',     popular: false, yearStart: 2020 },
+  'Mirage':         { body_type: 'Hatchback', segment: 'Minicompact',     popular: false },
+  // Audi
+  'A3':             { body_type: 'Hatchback', segment: 'Compact',         popular: false },
+  'A4':             { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'Q3':             { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'Q5':             { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'Q7':             { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Q8':             { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false, yearStart: 2019 },
+  'e-tron':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2020 },
+  // BMW
+  'Serie 3':        { body_type: 'Sedan',     segment: 'Compact',         popular: false },
+  'Serie 5':        { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'X1':             { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'X3':             { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'X5':             { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'iX':             { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false, yearStart: 2022 },
+  // Mercedes-Benz
+  'Clase A':        { body_type: 'Hatchback', segment: 'Compact',         popular: false },
+  'Clase C':        { body_type: 'Sedan',     segment: 'Compact',         popular: false },
+  'Clase E':        { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'Clase GLA':      { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'Clase GLB':      { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false, yearStart: 2020 },
+  'Clase GLC':      { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'Clase GLE':      { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Clase GLS':      { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  'Clase S':        { body_type: 'Sedan',     segment: 'Full-size',       popular: false },
+  // Land Rover
+  'Range Rover Evoque':  { body_type: 'SUV',  segment: 'Compact SUV',     popular: false },
+  'Range Rover Sport':   { body_type: 'SUV',  segment: 'Midsize SUV',     popular: false },
+  'Range Rover':         { body_type: 'SUV',  segment: 'Full-size SUV',   popular: false },
+  'Defender':            { body_type: 'SUV',  segment: 'Midsize SUV',     popular: false, yearStart: 2021 },
+  'Discovery':           { body_type: 'SUV',  segment: 'Midsize SUV',     popular: false },
+  // Lexus
+  'ES':             { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'IS':             { body_type: 'Sedan',     segment: 'Compact',         popular: false },
+  'NX':             { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'RX':             { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'UX':             { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false, yearStart: 2019 },
+  // Infiniti
+  'Q50':            { body_type: 'Sedan',     segment: 'Midsize',         popular: false },
+  'QX50':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'QX60':           { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  // Cadillac
+  'Escalade':       { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  'XT5':            { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  // Lincoln
+  'Navigator':      { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  // Porsche
+  'Cayenne':        { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
+  'Macan':          { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  '911':            { body_type: 'Coupe',     segment: 'Sports',          popular: false },
+  'Panamera':       { body_type: 'Sedan',     segment: 'Full-size',       popular: false },
+  'Taycan':         { body_type: 'Sedan',     segment: 'Midsize',         popular: false, yearStart: 2020 },
+  // Jaguar
+  'F-Pace':         { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'E-Pace':         { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  'F-Type':         { body_type: 'Coupe',     segment: 'Sports',          popular: false },
+  // GWM / Haval
+  'Haval H6':       { body_type: 'SUV',       segment: 'Compact SUV',     popular: true  },
+  'Haval Jolion':   { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: true  },
+  'Tank 300':       { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2023 },
+  'Tank 500':       { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false, yearStart: 2024 },
+  // Subaru
+  'Forester':       { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'Outback':        { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'WRX':            { body_type: 'Sedan',     segment: 'Compact',         popular: false },
+  'Crosstrek':      { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false },
+  // Tesla
+  'Model 3':        { body_type: 'Sedan',     segment: 'Compact',         popular: false, yearStart: 2020 },
+  'Model Y':        { body_type: 'SUV',       segment: 'Compact SUV',     popular: false, yearStart: 2022 },
+  'Model S':        { body_type: 'Sedan',     segment: 'Full-size',       popular: false },
+  'Model X':        { body_type: 'SUV',       segment: 'Full-size SUV',   popular: false },
+  // Volvo
+  'XC40':           { body_type: 'SUV',       segment: 'Subcompact SUV',  popular: false, yearStart: 2019 },
+  'XC60':           { body_type: 'SUV',       segment: 'Compact SUV',     popular: false },
+  'XC90':           { body_type: 'SUV',       segment: 'Midsize SUV',     popular: false },
 };
+
+// ─── Derive seedData from catalog ────────────────────────────────────────────
+
+const makesArray = Object.keys(MAKES_DATA).sort().map(name => ({
+  name,
+  ...(MAKE_META[name] || { country: 'N/D', popular: false })
+}));
+
+const modelsObject = Object.fromEntries(
+  Object.entries(MAKES_DATA).map(([make, modelNames]) => [
+    make,
+    modelNames.map(name => ({
+      name,
+      ...(MODEL_META[name] || { body_type: null, segment: null, popular: false })
+    }))
+  ])
+);
+
+const seedData = { makes: makesArray, models: modelsObject };
+
+// ─── Derive trimsByModel from TRIMS_DATA ──────────────────────────────────────
+
+function inferTransmission(name) {
+  if (/CVT/i.test(name)) return 'CVT';
+  const dsg = name.match(/DSG(\d)/i);
+  if (dsg) return `DSG ${dsg[1]} vel`;
+  const ta = name.match(/TA(\d+)/i);
+  if (ta) return `Automático ${ta[1]} vel`;
+  const tm = name.match(/TM(\d+)/i);
+  if (tm) return `Manual ${tm[1]} vel`;
+  if (/\b(TA|AT)\b/.test(name)) return 'Automático';
+  if (/\b(TM|MT)\b/.test(name)) return 'Manual';
+  return null;
+}
+
+function inferFuelType(name) {
+  if (/\bEV\b|eléctrico|electric|recharge/i.test(name)) return 'Eléctrico';
+  if (/PHEV|plug.in/i.test(name)) return 'Híbrido Enchufable';
+  if (/\bHEV\b|hybrid|híbrido/i.test(name)) return 'Híbrido';
+  if (/diesel|diésel/i.test(name)) return 'Diésel';
+  return 'Gasolina';
+}
+
+const trimsByModel = Object.fromEntries(
+  Object.entries(TRIMS_DATA).map(([model, names]) => [
+    model,
+    names.map(name => ({
+      name,
+      engine:       null,
+      transmission: inferTransmission(name),
+      fuel_type:    inferFuelType(name)
+    }))
+  ])
+);
 
 // ─── MSRP lookup ─────────────────────────────────────────────────────────────
 
-// Reference base prices (approx. 2022 model year, base trim)
 const BASE_PRICES_2022 = {
   // Nissan
-  'Versa': 245000, 'Kicks': 370000, 'Sentra': 350000, 'X-Trail': 520000,
-  'NP300': 380000, 'Altima': 530000, 'Frontier': 480000, 'Pathfinder': 720000,
+  'Versa': 245000, 'Kicks': 370000, 'March': 210000, 'X-Trail': 520000,
+  'Altima': 530000, 'Pathfinder': 720000,
   // Chevrolet
-  'Spark': 215000, 'Aveo': 265000, 'Cavalier': 320000, 'Tracker': 355000,
-  'Trax': 390000, 'Equinox': 490000, 'Silverado': 790000, 'Blazer': 580000, 'Tahoe': 1050000,
+  'Spark': 215000, 'Aveo': 265000, 'Onix': 270000, 'Cavalier': 320000,
+  'Tracker': 355000, 'Trax': 390000, 'Equinox': 490000, 'Tahoe': 1050000,
   // Toyota
   'Yaris': 265000, 'Corolla': 410000, 'Camry': 590000, 'RAV4': 620000,
-  'Hilux': 470000, 'Tacoma': 560000, 'Fortuner': 680000, 'Land Cruiser': 1500000,
+  'Tacoma': 560000, 'Land Cruiser': 1500000, 'C-HR': 420000, 'Avanza': 280000,
   // Volkswagen
-  'Vento': 295000, 'Jetta': 400000, 'Virtus': 340000, 'T-Cross': 410000,
+  'Vento': 295000, 'Jetta A7': 400000, 'Jetta A6': 350000, 'T-Cross': 410000,
   'Tiguan': 550000, 'Polo': 290000, 'Taos': 500000, 'Touareg': 1050000,
+  'Virtus': 340000, 'Nivus': 390000,
   // Kia
   'Rio': 265000, 'Forte': 355000, 'Sportage': 490000, 'Seltos': 410000,
-  'Sorento': 610000, 'Picanto': 230000,
+  'Sorento': 610000, 'Telluride': 850000,
   // Honda
   'City': 285000, 'Civic': 450000, 'HR-V': 430000, 'CR-V': 580000,
   'Accord': 620000, 'Pilot': 710000,
   // Ford
   'F-150': 750000, 'EcoSport': 385000, 'Escape': 490000, 'Explorer': 790000,
-  'Bronco': 750000, 'Ranger': 540000, 'Maverick': 440000,
+  'Bronco': 750000, 'Ranger': 540000, 'Maverick': 440000, 'Mustang': 680000,
   // Mazda
   'Mazda2': 270000, 'Mazda3': 405000, 'CX-30': 450000, 'CX-5': 530000,
-  'Mazda6': 540000, 'CX-9': 730000,
+  'Mazda6': 540000, 'CX-9': 730000, 'CX-50': 580000,
   // Hyundai
-  'Grand i10': 235000, 'Elantra': 380000, 'Creta': 385000,
-  'Tucson': 490000, 'Santa Fe': 650000,
+  'Grand i10': 235000, 'Accent': 255000, 'Elantra': 380000, 'Creta': 385000,
+  'Tucson': 490000, 'Santa Fe': 650000, 'Ioniq 5': 780000,
   // SEAT
-  'Ibiza': 320000, 'Leon': 430000, 'Ateca': 500000, 'Tarraco': 640000
+  'Ibiza': 320000, 'León': 430000, 'Ateca': 500000, 'Tarraco': 640000,
+  'Formentor': 560000,
+  // Jeep
+  'Renegade': 380000, 'Compass': 430000, 'Cherokee': 520000,
+  'Wrangler': 680000, 'Grand Cherokee': 780000, 'Commander': 720000,
+  // Renault
+  'Kwid': 195000, 'Sandero': 250000, 'Logan': 240000, 'Stepway': 270000,
+  'Duster': 315000, 'Koleos': 450000, 'Clio': 280000, 'Captur': 350000,
+  'Arkana': 420000, 'Kardian': 370000,
+  // Peugeot
+  '208': 320000, '2008': 380000, '3008': 450000, '5008': 540000,
+  // Suzuki
+  'Swift': 265000, 'Vitara': 335000, 'Grand Vitara': 380000, 'Jimny': 320000,
+  // Mitsubishi
+  'Eclipse Cross': 430000, 'Outlander': 490000, 'Xpander': 350000,
+  // Audi
+  'A3': 460000, 'A4': 550000, 'Q3': 480000, 'Q5': 680000, 'Q7': 980000,
+  // BMW
+  'Serie 3': 580000, 'Serie 5': 780000, 'X1': 530000, 'X3': 700000, 'X5': 1100000,
+  // Mercedes-Benz
+  'Clase A': 480000, 'Clase C': 650000, 'Clase E': 850000,
+  'Clase GLA': 580000, 'Clase GLC': 780000, 'Clase GLE': 1100000, 'Clase GLS': 1500000,
+  // Land Rover
+  'Range Rover Evoque': 900000, 'Range Rover Sport': 1400000,
+  'Range Rover': 2000000, 'Defender': 1300000,
+  // Lexus
+  'ES': 720000, 'IS': 680000, 'NX': 780000, 'RX': 950000, 'UX': 650000,
+  // Infiniti
+  'Q50': 650000, 'QX50': 780000, 'QX60': 900000,
+  // Cadillac
+  'Escalade': 2000000, 'XT5': 820000,
+  // Lincoln
+  'Navigator': 1800000,
+  // Porsche
+  'Cayenne': 1500000, 'Macan': 950000, '911': 1800000,
+  'Panamera': 1600000, 'Taycan': 1400000,
+  // Jaguar
+  'F-Pace': 950000, 'E-Pace': 750000, 'F-Type': 1200000,
+  // GWM / Haval
+  'Haval H6': 380000, 'Haval Jolion': 360000,
+  // Subaru
+  'Forester': 490000, 'Outback': 550000, 'WRX': 560000,
+  // Tesla
+  'Model 3': 680000, 'Model Y': 750000, 'Model S': 1400000, 'Model X': 1600000,
+  // Volvo
+  'XC40': 680000, 'XC60': 820000, 'XC90': 1050000,
 };
 
-// Trim-level multipliers (relative to base trim of that model)
 const TRIM_MULTIPLIERS = {
-  // F-150 specific trims
   'Base TA':     { 'F-150': 1.00 },
   'XLT TA':      { 'F-150': 1.20 },
   'Limited TA':  { 'F-150': 1.87 },
   'Platinum TA': { 'F-150': 1.60 },
   'ST TA':       { 'F-150': 1.27 },
-  // Tracker
   'LS CVT':      { 'Tracker': 1.00 },
   'LT CVT':      { 'Tracker': 1.11 },
   'RS CVT':      { 'Tracker': 1.22 },
   'Premier CVT': { 'Tracker': 1.34 }
 };
 
-// Generic trim-position multipliers for everything else
 const GENERIC_POSITION_MULT = [1.00, 1.10, 1.22, 1.35];
 
 function getMSRP(makeName, modelName, year, trimName, trimIndex = 0) {
   const base2022 = BASE_PRICES_2022[modelName] || 350000;
-  const yearAdj  = (year - 2022) * Math.round(base2022 * 0.03); // ~3% per year
+  const yearAdj  = (year - 2022) * Math.round(base2022 * 0.03);
   const baseYear = base2022 + yearAdj;
 
-  // Check for model-specific trim multiplier
   const modelSpecific = TRIM_MULTIPLIERS[trimName]?.[modelName];
   if (modelSpecific != null) {
     return Math.round(Math.max(150000, baseYear * modelSpecific));
   }
 
-  // Fall back to generic position-based multiplier
   const mult = GENERIC_POSITION_MULT[Math.min(trimIndex, GENERIC_POSITION_MULT.length - 1)];
   return Math.round(Math.max(150000, baseYear * mult));
 }
@@ -610,20 +499,20 @@ async function seed() {
 
     // Trims
     let trimCount = 0;
+    const defaultTrims = [
+      { name: 'Base',  engine: null, transmission: 'Manual',     fuel_type: 'Gasolina' },
+      { name: 'Mid',   engine: null, transmission: 'Automático', fuel_type: 'Gasolina' },
+      { name: 'Top',   engine: null, transmission: 'Automático', fuel_type: 'Gasolina' }
+    ];
+
     for (const [key, yearId] of Object.entries(yearIds)) {
       const parts     = key.split('/');
       const makeName  = parts[0];
       const modelName = parts[1];
       const year      = parseInt(parts[2]);
 
-      const defaultTrims = [
-        { name: 'Base',  engine: '1.6L 4-cil', transmission: 'Manual',     fuel_type: 'Gasolina' },
-        { name: 'Mid',   engine: '1.6L 4-cil', transmission: 'Automático', fuel_type: 'Gasolina' },
-        { name: 'Top',   engine: '2.0L 4-cil', transmission: 'Automático', fuel_type: 'Gasolina' }
-      ];
       const trims = trimsByModel[modelName] || defaultTrims;
 
-      // Delete trims not in the current list so stale entries from old seeds are removed
       const currentNames = trims.map(t => t.name);
       await client.query(
         `DELETE FROM trims WHERE year_id = $1 AND name != ALL($2::text[])`,
@@ -648,6 +537,13 @@ async function seed() {
 
     await client.query('COMMIT');
     console.log('Database seeded successfully!');
+
+    return {
+      makes:  Object.keys(makeIds).length,
+      models: Object.keys(modelIds).length,
+      years:  Object.keys(yearIds).length,
+      trims:  trimCount
+    };
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Seed failed:', err.message);
