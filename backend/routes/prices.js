@@ -1,11 +1,92 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 const { query, validationResult } = require('express-validator');
 const db = require('../db/connection');
-const { calculatePricesFromListings, getPriceRating } = require('../services/priceCalculator');
+const { calculatePricesFromListings, getPriceRating, getMileageAdjustment } = require('../services/priceCalculator');
 const { generateAIAnalysis } = require('../services/aiAnalysis');
 const { scrapeOnDemand } = require('../scrapers/mercadolibre');
 const logger = require('../utils/logger');
+
+// ── Lobato price guide (primary source) ───────────────────────────────────────
+let LOBATO = null;
+try {
+  LOBATO = require(path.join(__dirname, '../db/lobato_prices.json'));
+  const brands = Object.keys(LOBATO).length;
+  let totalEntries = 0;
+  for (const b of Object.values(LOBATO))
+    for (const m of Object.values(b))
+      for (const yr of Object.values(m))
+        totalEntries += yr.length;
+  logger.info(`Lobato guide loaded: ${brands} brands, ${totalEntries} price entries`);
+} catch (e) {
+  logger.warn('lobato_prices.json not found — falling back to market data only');
+}
+
+const CONDITION_MULTIPLIERS = { excellent: 1.08, good: 1.00, fair: 0.88, poor: 0.74 };
+
+// Find matching Lobato entries for a given make/model/year.
+// Returns { brand, model, entries } or null.
+function findLobatoEntries(make, model, year) {
+  if (!LOBATO) return null;
+
+  const makeUpper = make.trim().toUpperCase();
+  // Exact brand match first, then prefix/suffix match
+  let brandKey = Object.keys(LOBATO).find(b => b === makeUpper)
+    || Object.keys(LOBATO).find(b => b.startsWith(makeUpper) || makeUpper.startsWith(b));
+  if (!brandKey) return null;
+
+  const modelNorm = model.trim().toLowerCase();
+  const modelKeys = Object.keys(LOBATO[brandKey]);
+  // Priority: exact → Lobato key starts with user term → user term starts with Lobato key
+  const modelKey = modelKeys.find(m => m.toLowerCase() === modelNorm)
+    || modelKeys.find(m => m.toLowerCase().startsWith(modelNorm))
+    || modelKeys.find(m => modelNorm.startsWith(m.toLowerCase()));
+  if (!modelKey) return null;
+
+  const entries = LOBATO[brandKey][modelKey]?.[year];
+  if (!entries || entries.length === 0) return null;
+  return { brand: brandKey, model: modelKey, entries };
+}
+
+// Build a Lobato-sourced prices object using the same shape as calculatePricesFromListings.
+function buildLobatoPrice(entries, condition, mileageKm, year) {
+  const avgVenta  = Math.round(entries.reduce((s, e) => s + e.venta,  0) / entries.length);
+  const avgCompra = Math.round(entries.reduce((s, e) => s + e.compra, 0) / entries.length);
+
+  const condMult  = CONDITION_MULTIPLIERS[condition] || 1.0;
+  const mileAdj   = getMileageAdjustment(mileageKm, year);
+  const adj       = condMult * (1 + mileAdj);
+
+  const venta  = Math.round(avgVenta  * adj);
+  const compra = Math.round(avgCompra * adj);
+
+  return {
+    fairMarketValue: venta,
+    privateSale: {
+      low:  Math.round(compra * 1.02),
+      high: Math.round(venta  * 0.97),
+      mid:  Math.round((compra * 1.02 + venta * 0.97) / 2)
+    },
+    dealerRetail: {
+      low:  venta,
+      high: Math.round(venta  * 1.10),
+      mid:  Math.round(venta  * 1.05)
+    },
+    tradeIn: {
+      low:  Math.round(compra * 0.95),
+      high: compra,
+      mid:  Math.round(compra * 0.975)
+    },
+    adjustments: {
+      conditionMultiplier:  condMult,
+      mileageAdjustment:    Math.round(mileAdj * 1000) / 10,
+      depreciationPercent:  null,
+      sampleSize:           entries.length,
+      dataSource:           'lobato_guide'
+    }
+  };
+}
 
 const priceValidation = [
   query('make').notEmpty().trim(),
@@ -71,8 +152,26 @@ router.get('/estimate', priceValidation, async (req, res, next) => {
       }
     }
 
-    const msrp = trimData?.msrp_mxn || 350000;
-    const prices = calculatePricesFromListings(listings.rows, msrp, yearInt, mileageKm, condition);
+    // ── Primary: Lobato price guide ─────────────────────────────────────────
+    const lobatoMatch = findLobatoEntries(make, model, yearInt);
+    let prices;
+    let lobatoData = null;
+
+    if (lobatoMatch) {
+      prices = buildLobatoPrice(lobatoMatch.entries, condition, mileageKm, yearInt);
+      lobatoData = {
+        brand:   lobatoMatch.brand,
+        model:   lobatoMatch.model,
+        year:    yearInt,
+        trims:   lobatoMatch.entries,
+        source:  'Guía Autoprecios Lobato Feb 2026'
+      };
+      logger.info(`Lobato match: ${lobatoMatch.brand} / ${lobatoMatch.model} / ${yearInt} (${lobatoMatch.entries.length} trims)`);
+    } else {
+      // ── Fallback: depreciation algorithm from market listings / MSRP ──────
+      const msrp = trimData?.msrp_mxn || 350000;
+      prices = calculatePricesFromListings(listings.rows, msrp, yearInt, mileageKm, condition);
+    }
 
     // Get price history
     const historyResult = await db.query(
@@ -131,6 +230,7 @@ router.get('/estimate', priceValidation, async (req, res, next) => {
         transmission: trimData?.transmission || null
       },
       prices,
+      lobatoData,
       priceGuide,
       priceHistory,
       analysis,
