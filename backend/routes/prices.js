@@ -23,7 +23,10 @@ try {
   logger.warn('lobato_prices.json not found — falling back to market data only');
 }
 
-const CONDITION_MULTIPLIERS = { excellent: 1.08, good: 1.00, fair: 0.88, poor: 0.74 };
+// Blend delta: how much condition shifts the private-sale position between compra and venta.
+const CONDITION_BLEND_DELTA  = { excellent: 0.15, good: 0, fair: -0.12, poor: -0.25 };
+// For the UI "Condición" adjustment label (keeps familiar ±% display).
+const CONDITION_DISPLAY_MULT = { excellent: 1.08, good: 1.00, fair: 0.88, poor: 0.74 };
 
 // Find matching Lobato entries for a given make/model/year.
 // Returns { brand, model, entries } or null.
@@ -38,48 +41,93 @@ function findLobatoEntries(make, model, year) {
 
   const modelNorm = model.trim().toLowerCase();
   const modelKeys = Object.keys(LOBATO[brandKey]);
-  // Priority: exact → Lobato key starts with user term → user term starts with Lobato key
-  const modelKey = modelKeys.find(m => m.toLowerCase() === modelNorm)
-    || modelKeys.find(m => m.toLowerCase().startsWith(modelNorm))
-    || modelKeys.find(m => modelNorm.startsWith(m.toLowerCase()));
-  if (!modelKey) return null;
-
-  const entries = LOBATO[brandKey][modelKey]?.[year];
-  if (!entries || entries.length === 0) return null;
-  return { brand: brandKey, model: modelKey, entries };
+  // Build candidate list in priority order: exact → Lobato key starts with query → query starts with key
+  const candidates = [
+    ...modelKeys.filter(m => m.toLowerCase() === modelNorm),
+    ...modelKeys.filter(m => m.toLowerCase() !== modelNorm && m.toLowerCase().startsWith(modelNorm)),
+    ...modelKeys.filter(m => !m.toLowerCase().startsWith(modelNorm) && modelNorm.startsWith(m.toLowerCase()))
+  ];
+  // Pick first candidate that actually has entries for the requested year
+  for (const modelKey of candidates) {
+    const entries = LOBATO[brandKey][modelKey]?.[year];
+    if (entries && entries.length > 0) return { brand: brandKey, model: modelKey, entries };
+  }
+  return null;
 }
 
-// Build a Lobato-sourced prices object using the same shape as calculatePricesFromListings.
+// Parse a raw Lobato trim string into display-friendly { name, engine, transmission }.
+function parseLobatoParts(raw) {
+  const s = raw.replace(/\s+/g, ' ').trim();
+  const withoutPts = s.replace(/^\d+\s*[Pp]ts\.?\s*/, '');
+  const parts = withoutPts.split(/,\s*/);
+  const nameParts = [], engineParts = [], transParts = [];
+  let foundEngine = false;
+  for (const p of parts) {
+    const pt = p.trim();
+    if (!pt) continue;
+    if (/^(piel|tela|gamuza|alcantara|RA-|R-\d|QC|SNAV|QP|pant|HUD|spoiler|xen|cuero)/i.test(pt)) continue;
+    if (/^[LVI]\d/.test(pt) || /^(BEV|EV|HEV|MHEV)$/i.test(pt)) {
+      foundEngine = true; engineParts.push(pt);
+    } else if (/HP$|\bHP\b|\blt\b|\dT\.\d|\dT\b|kWh/.test(pt)) {
+      engineParts.push(pt);
+    } else if (/^(TM|TA)\s*\d/i.test(pt) || /^(CVT|DSG)$/i.test(pt) || pt === 'TA') {
+      transParts.push(pt);
+    } else if (!foundEngine) {
+      nameParts.push(pt);
+    }
+  }
+  let name = nameParts.join(' ').trim();
+  const engine = engineParts.join(' ').trim() || null;
+  const transmission = transParts.join(' ').trim() || null;
+  if (!name) {
+    name = withoutPts
+      .replace(/,(piel|tela|gamuza|alcantara|QC|SNAV|QP|pant|spoiler|xen)/gi, '')
+      .replace(/,RA-\d+|,R-\d+/gi, '').trim();
+  }
+  return { name, engine, transmission };
+}
+
+// Build a Lobato-sourced prices object with the same shape as calculatePricesFromListings.
+//
+// Business rules:
+//   Lobato COMPRA  = Intercambio (trade-in) anchor
+//   Lobato VENTA   = Concesionario (dealer) anchor
+//   Venta Privada  = blend between COMPRA and VENTA; condition + mileage shift the ratio
+//                    so prices always stay within the guide range.
+//
+// dataSource field lets callers know the origin for future weighting or regional logic.
 function buildLobatoPrice(entries, condition, mileageKm, year) {
   const avgVenta  = Math.round(entries.reduce((s, e) => s + e.venta,  0) / entries.length);
   const avgCompra = Math.round(entries.reduce((s, e) => s + e.compra, 0) / entries.length);
+  const spread    = avgVenta - avgCompra;
 
-  const condMult  = CONDITION_MULTIPLIERS[condition] || 1.0;
-  const mileAdj   = getMileageAdjustment(mileageKm, year);
-  const adj       = condMult * (1 + mileAdj);
+  const condBlend  = CONDITION_BLEND_DELTA[condition] ?? 0;
+  const mileAdj    = getMileageAdjustment(mileageKm, year);
+  const mileBlend  = mileAdj * 0.8;
+  const blend      = Math.max(0.10, Math.min(0.90, 0.625 + condBlend + mileBlend));
 
-  const venta  = Math.round(avgVenta  * adj);
-  const compra = Math.round(avgCompra * adj);
+  const privateMid    = Math.round(avgCompra + spread * blend);
+  const privateSpread = Math.round(spread * 0.05);
 
   return {
-    fairMarketValue: venta,
+    fairMarketValue: privateMid,
     privateSale: {
-      low:  Math.round(compra * 1.02),
-      high: Math.round(venta  * 0.97),
-      mid:  Math.round((compra * 1.02 + venta * 0.97) / 2)
+      low:  privateMid - privateSpread,
+      high: privateMid + privateSpread,
+      mid:  privateMid
     },
     dealerRetail: {
-      low:  venta,
-      high: Math.round(venta  * 1.10),
-      mid:  Math.round(venta  * 1.05)
+      low:  Math.round(avgVenta * 0.97),
+      high: Math.round(avgVenta * 1.05),
+      mid:  avgVenta
     },
     tradeIn: {
-      low:  Math.round(compra * 0.95),
-      high: compra,
-      mid:  Math.round(compra * 0.975)
+      low:  Math.round(avgCompra * 0.95),
+      high: Math.round(avgCompra * 1.02),
+      mid:  avgCompra
     },
     adjustments: {
-      conditionMultiplier:  condMult,
+      conditionMultiplier:  CONDITION_DISPLAY_MULT[condition] || 1.0,
       mileageAdjustment:    Math.round(mileAdj * 1000) / 10,
       depreciationPercent:  null,
       sampleSize:           entries.length,
@@ -158,15 +206,27 @@ router.get('/estimate', priceValidation, async (req, res, next) => {
     let lobatoData = null;
 
     if (lobatoMatch) {
-      prices = buildLobatoPrice(lobatoMatch.entries, condition, mileageKm, yearInt);
+      // Filter to the specific selected trim; fall back to all trims when trim is absent
+      // (e.g. "No sé la versión exacta") or no match found.
+      let activeEntries = lobatoMatch.entries;
+      if (trim && trim.trim()) {
+        const trimLower = trim.trim().toLowerCase();
+        const matched = lobatoMatch.entries.find(e => {
+          const { name } = parseLobatoParts(e.trim);
+          return name.toLowerCase() === trimLower;
+        });
+        if (matched) activeEntries = [matched];
+      }
+
+      prices = buildLobatoPrice(activeEntries, condition, mileageKm, yearInt);
       lobatoData = {
         brand:   lobatoMatch.brand,
         model:   lobatoMatch.model,
         year:    yearInt,
-        trims:   lobatoMatch.entries,
-        source:  'Guía Autoprecios Lobato Feb 2026'
+        trims:   activeEntries,
+        source:  'market_guide'
       };
-      logger.info(`Lobato match: ${lobatoMatch.brand} / ${lobatoMatch.model} / ${yearInt} (${lobatoMatch.entries.length} trims)`);
+      logger.info(`Lobato match: ${lobatoMatch.brand} / ${lobatoMatch.model} / ${yearInt} (${activeEntries.length}/${lobatoMatch.entries.length} trims)`);
     } else {
       // ── Fallback: depreciation algorithm from market listings / MSRP ──────
       const msrp = trimData?.msrp_mxn || 350000;
@@ -279,6 +339,37 @@ router.get('/compare', async (req, res, next) => {
     );
 
     res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Return Lobato trim entries for a given make/model/year, shaped for the trim-selector UI.
+router.get('/lobato-trims', async (req, res, next) => {
+  try {
+    const { make, model, year } = req.query;
+    if (!make || !model || !year) {
+      return res.status(400).json({ error: 'Se requieren make, model y year' });
+    }
+    const match = findLobatoEntries(make, model, parseInt(year, 10));
+    if (!match) return res.json([]);
+
+    const trims = match.entries.map((e, i) => {
+      const { name, engine, transmission } = parseLobatoParts(e.trim);
+      return {
+        id:           `lobato_${i}`,
+        name,
+        engine,
+        transmission,
+        fuel_type:    null,
+        msrp_mxn:     e.venta,
+        priceLabel:   'Precio guía',
+        lobato_venta: e.venta,
+        lobato_compra: e.compra,
+        source:       'lobato'
+      };
+    });
+    res.json(trims);
   } catch (err) {
     next(err);
   }

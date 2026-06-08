@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { getMakes, getModels, getYears, getTrims } from '../services/api';
+import { getMakes, getModels, getYears, getTrims, getLobatoTrims } from '../services/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const STEPS = [
@@ -146,11 +146,46 @@ export default function Search() {
   const [mileageError, setMileageError] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    getMakes()
-      .then(data => setMakes([...data].sort((a, b) => a.name.localeCompare(b.name, 'es'))))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+    const init = async () => {
+      // Restore previous search state when navigating back from Results.
+      const saved = sessionStorage.getItem('av_search_state');
+      if (saved) {
+        sessionStorage.removeItem('av_search_state');
+        try {
+          const { step, selected: sv } = JSON.parse(saved);
+          setSelected(sv);
+          setLoading(true);
+          const makesData = await getMakes();
+          setMakes([...makesData].sort((a, b) => a.name.localeCompare(b.name, 'es')));
+          if (sv.makeId) {
+            const modelsData = await getModels(sv.makeId);
+            setModels(modelsData);
+          }
+          if (sv.modelId) {
+            const yearsData = await getYears(sv.modelId);
+            setYears(yearsData);
+          }
+          if (sv.make && sv.model && sv.year) {
+            const lobatoTrims = await getLobatoTrims(sv.make, sv.model, sv.year).catch(() => []);
+            const trimsData = lobatoTrims.length > 0
+              ? lobatoTrims
+              : sv.yearId ? await getTrims(sv.yearId) : [];
+            setTrims(trimsData);
+          }
+          setCurrentStep(step);
+          setLoading(false);
+          return;
+        } catch (_) {
+          setLoading(false);
+        }
+      }
+      setLoading(true);
+      getMakes()
+        .then(data => setMakes([...data].sort((a, b) => a.name.localeCompare(b.name, 'es'))))
+        .catch(err => setError(err.message))
+        .finally(() => setLoading(false));
+    };
+    init();
   }, []);
 
   const handleSelectMake = async (make) => {
@@ -188,7 +223,9 @@ export default function Search() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getTrims(yearObj.id);
+      // Prefer real Lobato trims; fall back to catalog if none found.
+      const lobatoTrims = await getLobatoTrims(selected.make, selected.model, yearObj.year).catch(() => []);
+      const data = lobatoTrims.length > 0 ? lobatoTrims : await getTrims(yearObj.id);
       setTrims(data);
       setCurrentStep(3);
     } catch (err) {
@@ -219,8 +256,10 @@ export default function Search() {
   };
 
   const handleSelectCondition = (conditionId) => {
+    const fullSelected = { ...selected, condition: conditionId };
     setSelected(s => ({ ...s, condition: conditionId }));
-    // Navigate to results
+    // Persist state so the back button from Results restores the flow.
+    sessionStorage.setItem('av_search_state', JSON.stringify({ step: 5, selected: fullSelected }));
     const params = new URLSearchParams({
       make: selected.make,
       model: selected.model,
@@ -388,7 +427,7 @@ export default function Search() {
                           </div>
                           {t.msrp_mxn && (
                             <div style={{ fontSize: 13, color: 'var(--gray-500)', textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
-                              <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>MSRP est.</div>
+                              <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>{t.priceLabel || 'MSRP est.'}</div>
                               <div style={{ fontWeight: 700 }}>
                                 ${Math.round(t.msrp_mxn / 1000)}K
                               </div>

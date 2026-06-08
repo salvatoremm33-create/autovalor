@@ -328,7 +328,9 @@ export default function PriceSummary({ prices, vehicle, priceGuide, analysis }) 
               {formatMXN(fairMarketValue)}
             </div>
             <div style={{ fontSize: 12, color: 'var(--gray-600)', marginTop: 4 }}>
-              Basado en {adjustments.sampleSize} anuncios • {adjustments.dataSource === 'market_listings' ? 'Mercado real' : 'Estimado MSRP'}
+              {adjustments.dataSource === 'lobato_guide'
+                ? `${adjustments.sampleSize} versión${adjustments.sampleSize !== 1 ? 'es' : ''} · Datos de mercado`
+                : `Basado en ${adjustments.sampleSize} anuncios · ${adjustments.dataSource === 'market_listings' ? 'Mercado real' : 'Estimado MSRP'}`}
             </div>
           </div>
         </div>
@@ -379,11 +381,15 @@ export default function PriceSummary({ prices, vehicle, priceGuide, analysis }) 
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)', marginBottom: 10 }}>Factores de Ajuste Aplicados</div>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           {[
-            { label: 'Depreciación', value: `-${adjustments.depreciationPercent}%` },
+            adjustments.depreciationPercent != null
+              ? { label: 'Depreciación', value: `-${adjustments.depreciationPercent}%` }
+              : null,
             { label: 'Condición', value: `${adjustments.conditionMultiplier > 1 ? '+' : ''}${((adjustments.conditionMultiplier - 1) * 100).toFixed(0)}%` },
             { label: 'Km vs. promedio', value: `${adjustments.mileageAdjustment > 0 ? '+' : ''}${adjustments.mileageAdjustment}%` },
-            { label: 'Muestra', value: `${adjustments.sampleSize} anuncios` }
-          ].map(({ label, value }) => (
+            { label: 'Muestra', value: adjustments.dataSource === 'lobato_guide'
+                ? `${adjustments.sampleSize} versión${adjustments.sampleSize !== 1 ? 'es' : ''}`
+                : `${adjustments.sampleSize} anuncios` }
+          ].filter(Boolean).map(({ label, value }) => (
             <div key={label}>
               <div style={{ fontSize: 11, color: 'var(--gray-400)', marginBottom: 2 }}>{label}</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gray-800)' }}>{value}</div>

@@ -29,6 +29,9 @@ export const getTrims = (yearId) =>
 export const getPriceEstimate = (params) =>
   api.get('/prices/estimate', { params });
 
+export const getLobatoTrims = (make, model, year) =>
+  api.get('/prices/lobato-trims', { params: { make, model, year } });
+
 export const getPriceHistory = (make, model, year) =>
   api.get('/prices/history', { params: { make, model, year } });
 
